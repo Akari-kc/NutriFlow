@@ -1,132 +1,147 @@
-## NutriFlow Prototype
+# NutriFlow
 
-NutriFlow is a working school nutrition monitoring prototype for a nutrition aide. It skips algorithm-heavy features for now, and opens in demo aide mode with a seeded SQLite database.
+NutriFlow is a school nutrition monitoring app built for nutrition aides, feeding program coordinators, and school staff who need a clearer way to track student health, meal service, and nutrition reports.
 
-### Run locally
+The app helps schools keep student nutrition records in one place: children, grade sections, BMI measurements, meal logs, food catalog items, feeding schedules, and exportable reports. It is designed around day-to-day school feeding workflows rather than generic record keeping.
 
-Double-click `start-nutriflow.bat`, then open:
+## What NutriFlow Is For
 
-http://127.0.0.1:8001
+NutriFlow supports school-based feeding and nutrition monitoring programs. It gives staff a simple workspace for answering practical questions such as:
 
-The prototype includes dummy schools, students, menu items, meal logs, growth measurements, dashboards, and report charts.
+- Which students are undernourished, severely undernourished, overweight, obese, normal, or missing measurements?
+- How many meals were served today or during a selected date range?
+- Which students need review because of missing or incomplete growth data?
+- What meals and nutrients has a child received?
+- How is BMI trending across a class, section, school, or reporting period?
+- What data should be exported for school nutrition documentation?
 
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+The current prototype opens in a nutrition-aide workflow and includes seeded demo data so the app can be explored quickly.
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Main Features
 
-## About Laravel
+- Nutrition aide dashboard with student count, at-risk counts, meals served today, average calories, average protein, BMI trends, and suggested meal items.
+- Student registry for Kinder through Grade 6, with grade and section organization.
+- Student profiles with birthdate, gender, allergies, growth measurements, meal history, BMI charts, and latest nutrition status.
+- BMI-for-age classification using child BMI thresholds for statuses such as Normal, Undernourished, Severely Undernourished, Overweight, Obese, Needs Review, and No Measurement.
+- Batch meal logging for recording meals served to multiple students at once.
+- Meal catalog for school-specific food and menu items, including nutrition fields and CSV import.
+- Feeding schedule management for planned or recurring school feeding activities.
+- Reports page with filters for school year, grade, section, date range, and nutrition status.
+- CSV export for nutrition monitoring reports, including student measurements, meals served, calories, and protein totals.
+- Multi-school data scoping so users can work within their assigned school.
+- Settings area for theme and password management.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Who Uses It
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+NutriFlow is intended for:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Nutrition aides logging daily meals and student measurements.
+- School feeding coordinators reviewing program coverage and risk levels.
+- Administrators who need nutrition summaries and exportable reports.
+- Schools running feeding programs that need a lightweight digital monitoring tool.
 
-## NutriFlow (School Feeding Program)
+## Current Prototype Scope
 
-This app records student meals, calculates nutrient intake, and helps staff monitor nutrition and generate reports.
+This repository contains a working prototype. It focuses on the core nutrition-aide workflow and uses demo data to make the app usable immediately.
 
-Key features implemented:
-- Manual login using Laravel session auth
-- Single nutrition-aide dashboard and workflow
-- Navigation: Dashboard | Children | Meals | Meal Catalog | Reports | Settings
-- Data models for Students, Growth measurements, Foods, Meals, Meal items
-- Food CSV import and Report CSV export (PDF export stub)
+Implemented now:
 
-### Quick start (Windows PowerShell)
+- Login and nutrition-aide session flow.
+- Dashboard, students, meals, feeding schedules, meal catalog, reports, and settings pages.
+- Student measurement tracking with BMI calculation and classification.
+- Batch meal logging and per-student meal history.
+- Report charts and CSV export.
+- Seeded schools, students, meals, foods, growth measurements, and demo activity.
 
-1. Copy .env and configure DB
+Still planned or partial:
+
+- PDF export is currently rendered through a printable report view.
+- More advanced recommendations can be expanded beyond the current nutrition-profile heuristic.
+- Production deployment hardening, user roles, and real school onboarding would need additional review before live use.
+
+## Run Locally
+
+On Windows, the quickest way to try the prototype is:
+
+```powershell
+.\start-nutriflow.bat
 ```
+
+Then open:
+
+```text
+http://127.0.0.1:8001
+```
+
+The prototype uses seeded demo data and is intended to be easy to open for review.
+
+## Manual Setup
+
+If you prefer to run it manually:
+
+1. Copy the environment file.
+
+```powershell
 cp .env.example .env
 ```
-Update DB_ settings, then generate app key:
-```
+
+2. Configure the database settings in `.env`, then generate the app key.
+
+```powershell
 php artisan key:generate
 ```
 
-2. Run migrations and seed default users
-```
+3. Run migrations and seed demo data.
+
+```powershell
 php artisan migrate
 php artisan db:seed
 ```
 
-Log in with:
-- Aide: email `aide@example.com`, password `password`
+4. Install and build frontend assets if needed.
 
-3. Build assets (optional; CDN used for UI)
-```
+```powershell
 npm install
 npm run build
 ```
 
-4. Serve
-```
+5. Start the development server.
+
+```powershell
 php artisan serve
 ```
 
-### CSV import (Food DB)
+Demo login:
 
-Prepare a CSV with headers: `name,portion,kcal,protein_g,carbs_g,fat_g,iron_mg,vit_a_iu,vit_c_mg,calcium_mg` and upload it from Food DB page.
-
-### PDF export
-
-Install dompdf package to enable PDF export:
+```text
+Email: aide@example.com
+Password: password
 ```
-composer require barryvdh/laravel-dompdf
+
+## Food CSV Import
+
+The meal catalog can import food records from CSV. Use these headers:
+
+```text
+name,portion,kcal,protein_g,carbs_g,fat_g,iron_mg,vit_a_iu,vit_c_mg,calcium_mg
 ```
-Then implement a PDF view in `ReportController@exportPdf` (stubbed).
 
-### Notes
+Each imported item becomes available in the school's meal catalog for meal logging and nutrient calculations.
 
-- This is a minimal baseline. Batch meal logging and full per-child intake calculations will be wired next.
-- Styling uses soft greens and blues, rounded cards/buttons, and Chart.js via CDN.
+## Reporting
 
-## Learning Laravel
+NutriFlow reports summarize:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- Student nutrition status.
+- Latest measurement date, BMI, weight, and height.
+- Meals served during the selected period.
+- Estimated calories and protein served.
+- Screening progress and BMI trend data.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+CSV exports are available from the reports page for external documentation or spreadsheet review.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Tech Notes
 
-## Laravel Sponsors
+NutriFlow is implemented as a Laravel application with Blade views, Eloquent models, migrations, seeders, and Chart.js-powered reporting visuals. Laravel is the framework behind the app; the primary product goal is school nutrition monitoring.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Ignored local/runtime files include `.env`, `vendor`, `node_modules`, generated build output, logs, storage keys, and other machine-specific artifacts.
