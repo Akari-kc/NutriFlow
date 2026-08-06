@@ -76,12 +76,14 @@ class FeedingScheduleController extends Controller
             ->orderBy('class_name')
             ->orderBy('section')
             ->orderBy('name')
-            ->get(['id', 'name', 'class_name', 'section']);
+            ->get(['id', 'name', 'class_name', 'section', 'allergies']);
         $foods = Food::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'portion', 'recipe']);
         $classes = $students->pluck('class_name')->filter()->unique()->values();
         $sections = $students->pluck('section')->filter()->unique()->sort()->values();
+        $sessionAllergyWarnings = $sessions
+            ->mapWithKeys(fn($session) => [$session->id => $this->allergyWarningsForSchedule($session, $students, $foods)]);
 
         return view('feeding-schedules.index', [
             'sessions' => $sessions,
@@ -99,6 +101,7 @@ class FeedingScheduleController extends Controller
             'foods' => $foods,
             'classes' => $classes,
             'sections' => $sections,
+            'sessionAllergyWarnings' => $sessionAllergyWarnings,
         ]);
     }
 
@@ -389,5 +392,84 @@ class FeedingScheduleController extends Controller
             ->values();
 
         return $foodIds->isNotEmpty() ? $foodIds : $foods->take(3)->pluck('id')->values();
+    }
+
+    private function allergyWarningsForSchedule(FeedingSchedule $schedule, $students, $foods)
+    {
+        $studentIds = collect($schedule->participant_student_ids)->filter()->map(fn($id) => (int) $id)->all();
+        $foodIds = collect($schedule->selected_food_ids)->filter()->map(fn($id) => (int) $id)->all();
+
+        if (empty($studentIds) || empty($foodIds)) {
+            return collect();
+        }
+
+        $selectedStudents = $students->whereIn('id', $studentIds);
+        $selectedFoods = $foods->whereIn('id', $foodIds);
+
+        return $selectedStudents
+            ->flatMap(function ($student) use ($selectedFoods) {
+                $allergies = $this->splitAllergies($student->allergies);
+
+                if ($allergies->isEmpty()) {
+                    return [];
+                }
+
+                return $selectedFoods
+                    ->filter(fn($food) => $this->foodMatchesAnyAllergy($food, $allergies))
+                    ->map(fn($food) => [
+                        'student' => $student->name,
+                        'allergies' => $allergies->implode(', '),
+                        'food' => $food->name,
+                    ]);
+            })
+            ->values();
+    }
+
+    private function foodMatchesAnyAllergy(Food $food, $allergies): bool
+    {
+        $foodText = strtolower(implode(' ', array_merge([
+            (string) $food->name,
+            (string) $food->portion,
+            (string) $food->recipe,
+        ], $food->allergyAlerts())));
+
+        return $allergies->contains(function ($allergy) use ($foodText) {
+            $terms = $this->allergySearchTerms((string) $allergy);
+
+            return $terms->contains(fn($term) => $term !== '' && str_contains($foodText, $term));
+        });
+    }
+
+    private function splitAllergies(?string $allergies)
+    {
+        return collect(preg_split('/[,;\n]+/', (string) $allergies))
+            ->map(fn($item) => trim($item))
+            ->filter()
+            ->values();
+    }
+
+    private function allergySearchTerms(string $allergy)
+    {
+        $base = strtolower(trim($allergy));
+        $terms = collect([$base]);
+
+        $aliases = [
+            'milk' => ['milk', 'dairy', 'lactose', 'cheese', 'cream', 'butter'],
+            'lactose' => ['milk', 'dairy', 'lactose'],
+            'eggs' => ['egg', 'eggs'],
+            'egg' => ['egg', 'eggs'],
+            'peanuts' => ['peanut', 'peanuts', 'nut'],
+            'tree nuts' => ['tree nuts', 'nut', 'almond', 'cashew', 'walnut'],
+            'wheat/gluten' => ['wheat', 'gluten', 'flour', 'bread', 'noodle', 'pancit'],
+            'shellfish' => ['shellfish', 'shrimp', 'crab', 'squid'],
+        ];
+
+        foreach ($aliases as $needle => $expandedTerms) {
+            if ($base === $needle || str_contains($base, $needle)) {
+                $terms = $terms->merge($expandedTerms);
+            }
+        }
+
+        return $terms->map(fn($term) => strtolower(trim($term)))->filter()->unique()->values();
     }
 }

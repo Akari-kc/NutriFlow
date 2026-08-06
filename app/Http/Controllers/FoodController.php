@@ -35,12 +35,6 @@ class FoodController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateFood($request);
-        $data = array_merge([
-            'kcal' => 0,
-            'protein_g' => 0,
-            'carbs_g' => 0,
-            'fat_g' => 0,
-        ], $data);
         $data['school_id'] = auth()->user()?->school_id;
         Food::create($data);
         return redirect()->route('menu-items.index')->with('status','Meal added to this school\'s catalog');
@@ -87,14 +81,6 @@ class FoodController extends Controller
             Food::create([
                 'name' => $data['name'] ?? 'Unknown',
                 'portion' => $data['portion'] ?? null,
-                'kcal' => (float)($data['kcal'] ?? 0),
-                'protein_g' => (float)($data['protein_g'] ?? 0),
-                'carbs_g' => (float)($data['carbs_g'] ?? 0),
-                'fat_g' => (float)($data['fat_g'] ?? 0),
-                'iron_mg' => (float)($data['iron_mg'] ?? 0),
-                'vit_a_iu' => (float)($data['vit_a_iu'] ?? 0),
-                'vit_c_mg' => (float)($data['vit_c_mg'] ?? 0),
-                'calcium_mg' => (float)($data['calcium_mg'] ?? 0),
                 'school_id' => auth()->user()?->school_id,
             ]);
         }

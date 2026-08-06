@@ -51,6 +51,8 @@
   .session-grade { color:#7688ad; font-size:.82rem; margin:.2rem 0 .65rem; }
   .session-meta { display:grid; gap:.35rem; color:#42567e; font-size:.82rem; }
   .session-meta div { display:flex; align-items:center; gap:.45rem; }
+  .allergy-notice { margin-top:.75rem; border:1px solid #ffc9c4; background:#fff5f4; color:#b42318; border-radius:9px; padding:.65rem .75rem; font-size:.8rem; font-weight:800; }
+  .allergy-notice ul { margin:.35rem 0 0; padding-left:1rem; font-weight:700; }
   .session-actions { margin-top:auto; display:flex; gap:.55rem; padding-top:.8rem; }
   .link-action { border:0; background:transparent; color:#0b3b82; font-weight:900; font-size:.82rem; padding:0; }
   .link-action.warn { color:#c78200; }
@@ -135,6 +137,7 @@
           $participantPreview = count($participantNames)
               ? implode(', ', array_slice($participantNames, 0, 3)).(count($participantNames) > 3 ? ' +'.(count($participantNames) - 3).' more' : '')
               : ($session->batch_name ?: 'No students selected');
+          $allergyWarnings = ($sessionAllergyWarnings ?? collect())->get($session->id, collect());
         @endphp
         <article class="session-card {{ $mealClass($session->meal_type) }}">
           <div class="session-top">
@@ -148,6 +151,19 @@
             <div><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-8 0v2"/><circle cx="12" cy="7" r="4"/></svg>{{ $session->assigned_aide ?: 'Unassigned' }}</div>
             <div><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18"/><path d="M10 3v6a4 4 0 0 1-8 0V3"/><path d="M18 3v18"/></svg>{{ count($foodNames) ? implode(', ', $foodNames) : ($session->menu_items ?: 'No menu yet') }}</div>
           </div>
+          @if($allergyWarnings->count())
+            <div class="allergy-notice">
+              Allergy warning
+              <ul>
+                @foreach($allergyWarnings->take(2) as $warning)
+                  <li>{{ $warning['student'] }}: {{ $warning['food'] }} may contain {{ $warning['allergies'] }}</li>
+                @endforeach
+                @if($allergyWarnings->count() > 2)
+                  <li>{{ $allergyWarnings->count() - 2 }} more warning{{ $allergyWarnings->count() - 2 === 1 ? '' : 's' }}</li>
+                @endif
+              </ul>
+            </div>
+          @endif
           <div class="session-actions">
             <button class="link-action {{ $session->meal_type === 'Breakfast' ? 'warn' : '' }}" type="button" data-bs-toggle="modal" data-bs-target="#sessionModal{{ $session->id }}">View details -></button>
           </div>

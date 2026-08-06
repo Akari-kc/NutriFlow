@@ -55,8 +55,7 @@
     <div class="metric"><div class="label">Severely Undernourished</div><div class="value">{{ number_format($severe) }}</div><div class="muted">{{ $percent($severe) }}%</div></div>
     <div class="metric"><div class="label">No Measurement</div><div class="value">{{ number_format($noMeasurement) }}</div><div class="muted">{{ $percent($noMeasurement) }}%</div></div>
     <div class="metric"><div class="label">Screened This Period</div><div class="value">{{ number_format($screenedStudents) }}</div><div class="muted">{{ $percent($screenedStudents) }}%</div></div>
-    <div class="metric"><div class="label">Meals Served</div><div class="value">{{ number_format($mealTotals['meals_served']) }}</div><div class="muted">{{ number_format($mealTotals['avg_calories']) }} avg kcal</div></div>
-    <div class="metric"><div class="label">Protein Served</div><div class="value">{{ number_format($mealTotals['protein_g'], 1) }}g</div><div class="muted">{{ number_format($mealTotals['avg_protein_g'], 1) }}g avg per meal</div></div>
+    <div class="metric"><div class="label">Meals Served</div><div class="value">{{ number_format($mealTotals['meals_served']) }}</div></div>
   </div>
 
   <h2>Student Detail</h2>
@@ -69,8 +68,6 @@
         <th>Latest Measurement</th>
         <th>BMI</th>
         <th>Meals</th>
-        <th>Calories</th>
-        <th>Protein</th>
       </tr>
     </thead>
     <tbody>
@@ -82,12 +79,10 @@
           <td>{{ $row['measured_at'] ?? 'Not screened' }}</td>
           <td>{{ $row['bmi'] ?? 'No BMI' }}</td>
           <td>{{ number_format($row['meals_served']) }}</td>
-          <td>{{ number_format($row['calories']) }}</td>
-          <td>{{ number_format($row['protein_g'], 1) }}g</td>
         </tr>
       @empty
         <tr>
-          <td colspan="8">No students match the selected report filters.</td>
+          <td colspan="6">No students match the selected report filters.</td>
         </tr>
       @endforelse
     </tbody>

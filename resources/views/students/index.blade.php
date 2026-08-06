@@ -155,7 +155,7 @@
                     <span class="student-avatar">{{ $initials($s->name) }}</span>
                     <span class="flex-grow-1">
                       <span class="fw-bold">{{ $s->name }}</span>
-                      <span class="student-meta d-block">{{ $s->gender ?? '-' }} &middot; {{ $s->birthdate?->format('Y-m-d') ?? '-' }}</span>
+                      <span class="student-meta d-block">@if($s->lrn) ID {{ $s->lrn }} &middot; @endif{{ $s->gender ?? '-' }} &middot; {{ $s->birthdate?->format('Y-m-d') ?? '-' }}</span>
                     </span>
                     <span class="risk-pill {{ $riskClass }}">{{ $riskLabel }}</span>
                     <span class="view-pill">View</span>
@@ -180,6 +180,7 @@
           <thead>
             <tr>
               <th>Student</th>
+              <th>LRN / ID</th>
               <th>Section</th>
               <th>Class</th>
               <th>Risk</th>
@@ -198,6 +199,7 @@
                     <span>{{ $s->name }}</span>
                   </div>
                 </td>
+                <td>{{ $s->lrn ?: '-' }}</td>
                 <td>{{ $s->section }}</td>
                 <td>{{ $s->class_name }}</td>
                 <td><span class="risk-pill {{ $riskClass }}">{{ $riskLabel }}</span></td>

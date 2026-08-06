@@ -10,6 +10,7 @@ use App\Http\Controllers\FeedingScheduleController;
 use App\Http\Controllers\FoodController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\StudentImportController;
 use App\Models\User;
 
 function nutriflowPrototypeLogin(): void
@@ -47,6 +48,9 @@ Route::middleware(['auth'])->group(function(){
     Route::patch('/students/{student}', [StudentController::class,'update'])->name('students.update');
     Route::delete('/students/{student}', [StudentController::class,'destroy'])->name('students.destroy');
     Route::post('/students/{student}/measurements', [StudentController::class,'storeMeasurement'])->name('students.measurements.store');
+    Route::get('/student-import', [StudentImportController::class,'index'])->name('student-import.index');
+    Route::get('/student-import/template', [StudentImportController::class,'template'])->name('student-import.template');
+    Route::post('/student-import', [StudentImportController::class,'import'])->name('student-import.import');
 
     Route::get('/meals', [MealController::class,'index'])->name('meals.index');
     Route::get('/meals/batch', [MealController::class,'batch'])->name('meals.batch');

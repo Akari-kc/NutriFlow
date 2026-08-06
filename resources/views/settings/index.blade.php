@@ -4,6 +4,16 @@
 <h4>Settings</h4>
 
 <div class="card nl-card p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+    <div>
+      <div class="fw-semibold mb-1">Data Import</div>
+      <div class="small text-muted">Import student profiles and growth records from a CSV file during client setup.</div>
+    </div>
+    <a href="{{ route('student-import.index') }}" class="btn btn-outline-primary btn-sm nl-btn">Open Import Data</a>
+  </div>
+</div>
+
+<div class="card nl-card p-3 mb-3">
   <div class="fw-semibold mb-2">Appearance</div>
   <form method="POST" action="{{ route('settings.theme') }}" class="d-flex align-items-center gap-2" id="themeForm">
     @csrf

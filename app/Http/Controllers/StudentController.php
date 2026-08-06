@@ -34,6 +34,7 @@ class StudentController extends Controller
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('lrn', 'like', "%{$search}%")
                     ->orWhere('class_name', 'like', "%{$search}%")
                     ->orWhere('section', 'like', "%{$search}%");
             });
@@ -81,8 +82,8 @@ class StudentController extends Controller
         $gradeSections = $this->availableGradeSections($schoolId);
         $searchSuggestions = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
             ->orderBy('name')
-            ->get(['name', 'class_name', 'section'])
-            ->flatMap(fn($student) => [$student->name, $student->class_name, $student->section])
+            ->get(['name', 'lrn', 'class_name', 'section'])
+            ->flatMap(fn($student) => [$student->name, $student->lrn, $student->class_name, $student->section])
             ->filter()
             ->unique()
             ->values();
@@ -127,6 +128,7 @@ class StudentController extends Controller
             'middle_initial' => 'nullable|string|max:5',
             'last_name' => 'required|string|max:100',
             'suffix' => 'nullable|string|max:20',
+            'lrn' => 'nullable|string|max:50',
             'gender' => 'required|in:Male,Female',
             'birthdate' => 'required|date',
             'section' => ['required', 'string'],
@@ -144,6 +146,12 @@ class StudentController extends Controller
 
         $weightKg = $this->normalizeWeightKg((float) $data['weight_value'], $data['weight_unit']);
         $heightCm = $this->normalizeHeightCm((float) $data['height_value'], $data['height_unit']);
+
+        if (! $this->birthdateMatchesElementaryAge($data['birthdate'])) {
+            return back()
+                ->withErrors(['birthdate' => 'Age must fit Kinder to Grade 6 learners, usually 5 to 12 years old.'])
+                ->withInput();
+        }
 
         if ($weightKg <= 0 || $weightKg > 200 || $heightCm < 30 || $heightCm > 250) {
             return back()
@@ -169,6 +177,7 @@ class StudentController extends Controller
                 $data['last_name'],
                 $data['suffix'] ?? null
             ),
+            'lrn' => $data['lrn'] ?? null,
             'gender' => $data['gender'],
             'birthdate' => $data['birthdate'],
             'section' => $section,
@@ -232,6 +241,11 @@ class StudentController extends Controller
             ->whereNotNull('bmi')
             ->orderBy('measured_at')
             ->get(['measured_at', 'bmi']);
+        $growthTableRows = $student->measurements()
+            ->orderByDesc('measured_at')
+            ->orderByDesc('id')
+            ->take(20)
+            ->get();
         $bmiGrouped = $bmiRows->groupBy(function ($measurement) use ($bmiPeriod) {
             $date = Carbon::parse($measurement->measured_at, 'Asia/Manila');
 
@@ -293,6 +307,7 @@ class StudentController extends Controller
             'bmiLow' => $bmiLow,
             'bmiHigh' => $bmiHigh,
             'bmiChange' => $bmiChange,
+            'growthTableRows' => $growthTableRows,
             'allergies' => $allergies,
             'mealSearchSuggestions' => $mealSearchSuggestions,
         ]);
@@ -329,6 +344,7 @@ class StudentController extends Controller
             'middle_initial' => 'nullable|string|max:5',
             'last_name' => 'required|string|max:100',
             'suffix' => 'nullable|string|max:20',
+            'lrn' => 'nullable|string|max:50',
             'gender' => 'nullable|in:Male,Female',
             'birthdate' => 'nullable|date',
             'section' => ['nullable', 'string'],
@@ -347,6 +363,12 @@ class StudentController extends Controller
                 ->withInput();
         }
 
+        if (!empty($data['birthdate']) && ! $this->birthdateMatchesElementaryAge($data['birthdate'])) {
+            return back()
+                ->withErrors(['birthdate' => 'Age must fit Kinder to Grade 6 learners, usually 5 to 12 years old.'])
+                ->withInput();
+        }
+
         if (!empty($data['class_name']) && $section !== '') {
             $this->ensureGradeSection($schoolId, $data['class_name'], $section);
         }
@@ -360,6 +382,7 @@ class StudentController extends Controller
                 $data['last_name'],
                 $data['suffix'] ?? null
             ),
+            'lrn' => $data['lrn'] ?? null,
             'gender' => $data['gender'] ?? null,
             'birthdate' => $data['birthdate'] ?? null,
             'section' => $section ?: null,
@@ -454,6 +477,13 @@ class StudentController extends Controller
             'ft' => $value * 30.48,
             default => $value,
         }, 1);
+    }
+
+    private function birthdateMatchesElementaryAge(string $birthdate): bool
+    {
+        $age = Carbon::parse($birthdate)->age;
+
+        return $age >= 5 && $age <= 12;
     }
 
     private function matchesRisk(Student $student, string $risk): bool

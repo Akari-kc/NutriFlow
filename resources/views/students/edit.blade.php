@@ -81,6 +81,11 @@
 
       <div class="section-label">School Details</div>
       <div class="row g-3 mb-4">
+        <div class="col-lg-3 col-md-4">
+          <label class="form-label">LRN / Student ID</label>
+          <input name="lrn" value="{{ old('lrn', $student->lrn) }}" class="form-control" placeholder="Optional">
+          @error('lrn')<div class="text-danger small">{{ $message }}</div>@enderror
+        </div>
         <div class="col-lg-2 col-md-4">
           <label class="form-label">Gender</label>
           <select name="gender" class="form-select">
@@ -93,6 +98,7 @@
         <div class="col-lg-3 col-md-4">
           <label class="form-label">Birthdate</label>
           <input type="date" name="birthdate" value="{{ old('birthdate', optional($student->birthdate)->format('Y-m-d')) }}" class="form-control">
+          <div class="form-text" id="ageRangeHint">Kinder to Grade 6 age range: 5 to 12 years old.</div>
           @error('birthdate')<div class="text-danger small">{{ $message }}</div>@enderror
         </div>
         <div class="col-lg-2 col-md-4">
@@ -108,6 +114,7 @@
               <option value="{{ $className }}" @selected(old('class_name', $student->class_name) === $className)>{{ $className }}</option>
             @endforeach
           </select>
+          <div class="form-text" id="gradeAgeHint">Choose birthdate and grade to check the usual age range.</div>
           @error('class_name')<div class="text-danger small">{{ $message }}</div>@enderror
         </div>
         <div class="col-lg-3 col-md-8">
@@ -193,8 +200,51 @@
       return years < 0 ? 0 : years;
     }
     function sync(){ const v = computeAge(b.value); if(age){ age.value = v; } }
-    if(b){ b.addEventListener('change', sync); b.addEventListener('blur', sync); }
+    function syncAgeWarning(){
+      const hint = document.getElementById('ageRangeHint');
+      const computed = computeAge(b?.value || '');
+      if (!hint) return;
+      if (computed !== '' && (computed < 5 || computed > 12)) {
+        hint.className = 'form-text text-danger fw-semibold';
+        hint.textContent = 'Age is outside the Kinder to Grade 6 range. Use ages 5 to 12.';
+      } else {
+        hint.className = 'form-text';
+        hint.textContent = 'Kinder to Grade 6 age range: 5 to 12 years old.';
+      }
+    }
+    function expectedAgeForGrade(grade) {
+      if (grade === 'Kinder') return 5;
+      const match = String(grade || '').match(/\d+/);
+      return match ? Number(match[0]) + 5 : null;
+    }
+    function syncGradeAgeWarning(){
+      const hint = document.getElementById('gradeAgeHint');
+      const computed = computeAge(b?.value || '');
+      const grade = classNameSelect?.value || '';
+      const expected = expectedAgeForGrade(grade);
+      if (!hint) return;
+      if (computed === '' || !expected) {
+        hint.className = 'form-text';
+        hint.textContent = 'Choose birthdate and grade to check the usual age range.';
+        return;
+      }
+      const minAge = expected - 2;
+      const maxAge = expected + 2;
+      if (computed < minAge || computed > maxAge) {
+        hint.className = 'form-text text-warning fw-semibold';
+        hint.textContent = grade + ' usually fits ages ' + minAge + ' to ' + maxAge + '. Please review this age/grade pairing.';
+      } else {
+        hint.className = 'form-text text-success';
+        hint.textContent = 'Age looks reasonable for ' + grade + '.';
+      }
+    }
+    if(b){
+      b.addEventListener('change', function(){ sync(); syncAgeWarning(); syncGradeAgeWarning(); });
+      b.addEventListener('blur', function(){ sync(); syncAgeWarning(); syncGradeAgeWarning(); });
+    }
     sync();
+    syncAgeWarning();
+    syncGradeAgeWarning();
 
     if (addAllergy && allergyRows && allergyTemplate) {
       addAllergy.addEventListener('click', function(){
@@ -240,7 +290,10 @@
       }
       syncSectionInput();
     }
-    classNameSelect?.addEventListener('change', rebuildSectionOptions);
+    classNameSelect?.addEventListener('change', function(){
+      rebuildSectionOptions();
+      syncGradeAgeWarning();
+    });
     rebuildSectionOptions();
     sectionSelect?.addEventListener('change', syncSectionInput);
     syncSectionInput();

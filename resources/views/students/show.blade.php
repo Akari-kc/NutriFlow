@@ -14,7 +14,7 @@
   .status-pill { border-radius: 999px; padding: .28rem .65rem; font-size: .74rem; font-weight: 800; }
   .status-healthy { background: #e7f3ed; color: #057243; }
   .status-alert { background: #ffeceb; color: #d92d20; }
-  .profile-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; padding-top: 1.25rem; }
+  .profile-facts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; padding-top: 1.25rem; }
   .fact-label { display: flex; align-items: center; gap: .4rem; color: #7c8bad; font-size: .78rem; }
   .fact-value { color: #082858; font-weight: 800; font-size: .88rem; margin-top: .45rem; }
   .metric-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.2rem; }
@@ -46,13 +46,31 @@
   .history-filters { display: flex; align-items: end; gap: .7rem; flex-wrap: wrap; margin: .85rem 0 1rem; }
   .history-filters .form-control, .history-filters .form-select { min-height: 36px; font-size: .84rem; border-radius: 9px; }
   .unit-pair { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: .45rem; }
+  .growth-entry-card { border: 1px solid #cdddf2; background: #f8fbff; border-radius: 10px; padding: 1rem; box-shadow: inset 0 1px 0 rgba(255,255,255,.8); }
+  .growth-entry-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .85rem; }
+  .growth-entry-title { color: #082858; font-weight: 900; margin-bottom: .18rem; }
+  .growth-entry-copy { color: #7c8bad; font-size: .78rem; }
+  .growth-entry-badge { background: #0b3b82; color: #fff; border-radius: 8px; padding: .32rem .55rem; font-size: .74rem; font-weight: 900; white-space: nowrap; }
+  .growth-entry-card .form-label { color: #30466f; font-weight: 800; }
+  .growth-record-tools { display: grid; grid-template-columns: minmax(170px, 1fr) 150px 150px 150px; gap: .55rem; align-items: end; margin: .85rem 0; }
+  .growth-record-tools .form-control, .growth-record-tools .form-select { min-height: 36px; font-size: .82rem; border-radius: 9px; }
+  .growth-table-scroll { border: 1px solid #e4e9f2; border-radius: 10px; max-height: 320px; overflow: auto; }
+  .growth-source-table { min-width: 720px; }
+  .growth-source-table thead th { position: sticky; top: 0; background: #fbfcfe; z-index: 1; border-bottom: 1px solid #dbe3ef; }
+  .growth-source-table th { color: #7c8bad; font-size: .76rem; font-weight: 900; }
+  .growth-source-table td { color: #082858; font-size: .82rem; }
+  .growth-empty-row { color: #7c8bad; padding: .85rem; font-size: .84rem; display: none; }
   @media (max-width: 1000px) {
     .profile-facts, .metric-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .growth-record-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (max-width: 640px) {
     .profile-facts, .metric-strip { grid-template-columns: 1fr; }
     .profile-main { display: block; }
     .profile-actions { margin-top: 1rem; }
+    .growth-entry-head { display: block; }
+    .growth-entry-badge { display: inline-block; margin-top: .55rem; }
+    .growth-record-tools { grid-template-columns: 1fr; }
   }
 </style>
 
@@ -100,6 +118,10 @@
     <div>
       <div class="fact-label">Date of Birth</div>
       <div class="fact-value">{{ $student->birthdate?->format('F j, Y') ?? '-' }}</div>
+    </div>
+    <div>
+      <div class="fact-label">LRN / Student ID</div>
+      <div class="fact-value">{{ $student->lrn ?: '-' }}</div>
     </div>
     <div>
       <div class="fact-label">Age</div>
@@ -175,43 +197,107 @@
     </div>
 
     <div class="nl-card compact-form-card">
-      <div class="panel-title">Update Growth</div>
-      <form method="POST" action="{{ route('students.measurements.store', $student) }}" class="row g-2 mt-1">
-        @csrf
-        <div class="col-md-4">
-          <label class="form-label small mb-1">Date</label>
-          <input type="date" name="measured_at" value="{{ old('measured_at', now()->format('Y-m-d')) }}" class="form-control form-control-sm" required>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label small mb-1">Weight</label>
-          <div class="unit-pair">
-            <input type="number" step="0.01" min="0" name="weight_value" value="{{ old('weight_value', optional($latest)->weight_kg) }}" class="form-control form-control-sm" required>
-            <select name="weight_unit" class="form-select form-select-sm">
-              <option value="kg" @selected(old('weight_unit', 'kg') === 'kg')>kg</option>
-              <option value="g" @selected(old('weight_unit') === 'g')>g</option>
-              <option value="lb" @selected(old('weight_unit') === 'lb')>lb</option>
-            </select>
+      <div class="growth-entry-card">
+        <div class="growth-entry-head">
+          <div>
+            <div class="growth-entry-title">Add Growth Record</div>
+            <div class="growth-entry-copy">Enter a new measurement here. Saving adds it to the records table and updates the BMI graph.</div>
           </div>
-          @error('weight_value')<div class="text-danger small">{{ $message }}</div>@enderror
+          <div class="growth-entry-badge">New record slot</div>
         </div>
-        <div class="col-md-4">
-          <label class="form-label small mb-1">Height</label>
-          <div class="unit-pair">
-            <input type="number" step="0.01" min="0" name="height_value" value="{{ old('height_value', optional($latest)->height_cm) }}" class="form-control form-control-sm" required>
-            <select name="height_unit" class="form-select form-select-sm">
-              <option value="cm" @selected(old('height_unit', 'cm') === 'cm')>cm</option>
-              <option value="m" @selected(old('height_unit') === 'm')>m</option>
-              <option value="in" @selected(old('height_unit') === 'in')>in</option>
-              <option value="ft" @selected(old('height_unit') === 'ft')>ft</option>
-            </select>
+        <form method="POST" action="{{ route('students.measurements.store', $student) }}" class="row g-2">
+          @csrf
+          <div class="col-md-4">
+            <label class="form-label small mb-1">Measurement Date</label>
+            <input type="date" name="measured_at" value="{{ old('measured_at', now()->format('Y-m-d')) }}" class="form-control form-control-sm" required>
           </div>
-          @error('height_value')<div class="text-danger small">{{ $message }}</div>@enderror
+          <div class="col-md-4">
+            <label class="form-label small mb-1">Weight</label>
+            <div class="unit-pair">
+              <input type="number" step="0.01" min="0" name="weight_value" value="{{ old('weight_value', optional($latest)->weight_kg) }}" class="form-control form-control-sm" placeholder="Enter weight" required>
+              <select name="weight_unit" class="form-select form-select-sm">
+                <option value="kg" @selected(old('weight_unit', 'kg') === 'kg')>kg</option>
+                <option value="g" @selected(old('weight_unit') === 'g')>g</option>
+                <option value="lb" @selected(old('weight_unit') === 'lb')>lb</option>
+              </select>
+            </div>
+            @error('weight_value')<div class="text-danger small">{{ $message }}</div>@enderror
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small mb-1">Height</label>
+            <div class="unit-pair">
+              <input type="number" step="0.01" min="0" name="height_value" value="{{ old('height_value', optional($latest)->height_cm) }}" class="form-control form-control-sm" placeholder="Enter height" required>
+              <select name="height_unit" class="form-select form-select-sm">
+                <option value="cm" @selected(old('height_unit', 'cm') === 'cm')>cm</option>
+                <option value="m" @selected(old('height_unit') === 'm')>m</option>
+                <option value="in" @selected(old('height_unit') === 'in')>in</option>
+                <option value="ft" @selected(old('height_unit') === 'ft')>ft</option>
+              </select>
+            </div>
+            @error('height_value')<div class="text-danger small">{{ $message }}</div>@enderror
+          </div>
+          <div class="col-12 d-flex justify-content-between align-items-center gap-2 flex-wrap">
+            <div class="small text-muted">Saved measurements are normalized to kg and cm for BMI calculations.</div>
+            <button class="btn btn-primary btn-sm nl-btn">Save Measurement</button>
+          </div>
+        </form>
+      </div>
+      <div class="mt-4">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
+          <div>
+            <div class="panel-title mb-0">Growth Records</div>
+            <div class="panel-subtitle">These saved rows feed the BMI trend graph.</div>
+          </div>
         </div>
-        <div class="col-12 small text-muted">Saved measurements are normalized to kg and cm for BMI calculations.</div>
-        <div class="col-12 d-flex justify-content-end">
-          <button class="btn btn-primary btn-sm nl-btn">Save Measurement</button>
-        </div>
-      </form>
+        @if(($growthTableRows ?? collect())->count())
+          <div class="growth-record-tools" id="growthRecordFilters">
+            <div>
+              <label class="form-label small mb-1">Search</label>
+              <input type="search" class="form-control" data-growth-search placeholder="Date, BMI, status...">
+            </div>
+            <div>
+              <label class="form-label small mb-1">Status</label>
+              <select class="form-select" data-growth-status>
+                <option value="">All statuses</option>
+                @foreach(($growthTableRows ?? collect())->pluck('bmi_flag')->filter()->unique()->sort()->values() as $statusOption)
+                  <option value="{{ $statusOption }}">{{ $statusOption }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div>
+              <label class="form-label small mb-1">From</label>
+              <input type="date" class="form-control" data-growth-from>
+            </div>
+            <div>
+              <label class="form-label small mb-1">To</label>
+              <input type="date" class="form-control" data-growth-to>
+            </div>
+          </div>
+          <div class="table-responsive growth-table-scroll">
+            <table class="table table-sm align-middle mb-0 growth-source-table">
+              <thead><tr><th>Date</th><th>Weight</th><th>Height</th><th>BMI</th><th>Status</th></tr></thead>
+              <tbody>
+                @foreach($growthTableRows as $row)
+                  @php
+                    $growthDate = $row->measured_at?->format('Y-m-d') ?? (string) $row->measured_at;
+                    $growthStatus = $row->bmi_flag ?: '-';
+                  @endphp
+                  <tr data-growth-row data-date="{{ $growthDate }}" data-status="{{ $growthStatus }}" data-search="{{ strtolower($growthDate.' '.number_format($row->weight_kg, 2).' '.number_format($row->height_cm, 1).' '.$row->bmi.' '.$growthStatus) }}">
+                    <td>{{ $growthDate }}</td>
+                    <td>{{ number_format($row->weight_kg, 2) }} kg</td>
+                    <td>{{ number_format($row->height_cm, 1) }} cm</td>
+                    <td>{{ $row->bmi ?? '-' }}</td>
+                    <td>{{ $growthStatus }}</td>
+                  </tr>
+                @endforeach
+              </tbody>
+            </table>
+            <div class="growth-empty-row" data-growth-empty>No growth records match the filters.</div>
+          </div>
+        @else
+          <div class="text-muted">No growth measurements yet.</div>
+        @endif
+      </div>
     </div>
   </div>
 
@@ -361,6 +447,47 @@
         }
       }
     });
+  })();
+
+  (function(){
+    const filters = document.getElementById('growthRecordFilters');
+    if (!filters) return;
+
+    const search = filters.querySelector('[data-growth-search]');
+    const status = filters.querySelector('[data-growth-status]');
+    const from = filters.querySelector('[data-growth-from]');
+    const to = filters.querySelector('[data-growth-to]');
+    const rows = Array.from(document.querySelectorAll('[data-growth-row]'));
+    const empty = document.querySelector('[data-growth-empty]');
+
+    function applyFilters() {
+      const term = (search?.value || '').trim().toLowerCase();
+      const selectedStatus = status?.value || '';
+      const dateFrom = from?.value || '';
+      const dateTo = to?.value || '';
+      let visible = 0;
+
+      rows.forEach(function(row) {
+        const rowDate = row.dataset.date || '';
+        const matchesSearch = term === '' || (row.dataset.search || '').includes(term);
+        const matchesStatus = selectedStatus === '' || row.dataset.status === selectedStatus;
+        const matchesFrom = dateFrom === '' || rowDate >= dateFrom;
+        const matchesTo = dateTo === '' || rowDate <= dateTo;
+        const show = matchesSearch && matchesStatus && matchesFrom && matchesTo;
+
+        row.hidden = !show;
+        if (show) visible++;
+      });
+
+      if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+    }
+
+    [search, status, from, to].forEach(function(control) {
+      control?.addEventListener('input', applyFilters);
+      control?.addEventListener('change', applyFilters);
+    });
+
+    applyFilters();
   })();
 </script>
 @endsection

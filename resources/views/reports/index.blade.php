@@ -61,8 +61,15 @@
   .legend-inline { display: inline-flex; align-items: center; gap: 7px; }
   .report-table-card { overflow: hidden; }
   .table-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 14px; gap: 12px; }
+  .table-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .student-table-filters { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(170px, 220px) auto; gap: 10px; align-items: center; padding: 0 20px 14px; }
+  .student-search-wrap { position: relative; }
+  .student-search-wrap .svg-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #7688ad; pointer-events: none; }
+  .student-search { width: 100%; padding-left: 36px; }
+  .student-result-count { color: #7688ad; font-size: 12px; white-space: nowrap; text-align: right; }
+  .student-table-scroll { max-height: 430px; overflow: auto; border-top: 1px solid #e8edf5; }
   .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .report-table th { background: #f8fafc; color: #42567e; font-size: 12px; font-weight: 850; padding: 12px 20px; border-top: 1px solid #e8edf5; border-bottom: 1px solid #e8edf5; text-align: left; }
+  .report-table th { position: sticky; top: 0; z-index: 2; background: #f8fafc; color: #42567e; font-size: 12px; font-weight: 850; padding: 12px 20px; border-bottom: 1px solid #e8edf5; text-align: left; }
   .report-table td { padding: 13px 20px; border-bottom: 1px solid #edf1f7; color: #42567e; vertical-align: middle; }
   .report-name { display: flex; align-items: center; gap: 12px; color: #082858; font-weight: 850; }
   .file-icon { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; color: #00a65a; background: #e7f8ee; }
@@ -79,6 +86,8 @@
   @media (max-width: 760px) {
     .filter-grid, .metric-grid, .reports-grid { grid-template-columns: 1fr; }
     .table-head { flex-wrap: wrap; }
+    .student-table-filters { grid-template-columns: 1fr; }
+    .student-result-count { text-align: left; }
     .report-table { min-width: 940px; }
   }
 </style>
@@ -184,13 +193,7 @@
       <span class="metric-dot" style="background:#0b3b82"></span>
       <div class="metric-title">Meals Served</div>
       <div class="metric-value metric-blue">{{ number_format($mealTotals['meals_served']) }}</div>
-      <div class="metric-note">{{ number_format($mealTotals['avg_calories']) }} avg kcal per meal</div>
-    </div>
-    <div class="nl-card report-metric">
-      <span class="metric-dot" style="background:#16a34a"></span>
-      <div class="metric-title">Protein Served</div>
-      <div class="metric-value metric-green">{{ number_format($mealTotals['protein_g'], 1) }}g</div>
-      <div class="metric-note">{{ number_format($mealTotals['avg_protein_g'], 1) }}g avg per meal</div>
+      <div class="metric-note">Recorded during the selected period</div>
     </div>
   </div>
 
@@ -213,7 +216,9 @@
         <div class="donut-canvas"><canvas id="statusDonut"></canvas></div>
         <div class="status-legend">
           @foreach($statusMeta as [$label, $color])
-            @php($count = $statusCounts[$label] ?? 0)
+            @php
+              $count = $statusCounts[$label] ?? 0;
+            @endphp
             <div class="legend-row"><span class="legend-dot" style="background:{{ $color }}"></span><span>{{ $label }}</span><span class="legend-count">{{ $count }}</span><span class="legend-percent">{{ $percent($count) }}%</span></div>
           @endforeach
         </div>
@@ -237,9 +242,24 @@
         <h2 class="panel-title">Student Report Detail</h2>
         <div class="panel-subtitle">Latest nutrition status plus meals served during the selected period</div>
       </div>
-      <a class="report-btn primary" href="{{ route('reports.export.csv', $exportQuery) }}"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg> Download CSV</a>
+      <div class="table-actions">
+        <a class="report-btn primary" href="{{ route('reports.export.csv', $exportQuery) }}"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg> Download CSV</a>
+      </div>
     </div>
-    <div class="table-responsive">
+    <div class="student-table-filters">
+      <div class="student-search-wrap">
+        <svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="studentReportSearch" class="filter-control student-search" type="search" placeholder="Search student, grade, section, or status..." autocomplete="off">
+      </div>
+      <select id="studentReportStatus" class="filter-control wide" aria-label="Filter student report by status">
+        <option value="">All statuses</option>
+        @foreach($statusMeta as [$statusLabel])
+          <option value="{{ strtolower($statusLabel) }}">{{ $statusLabel }}</option>
+        @endforeach
+      </select>
+      <div id="studentReportCount" class="student-result-count">{{ number_format($reportRows->count()) }} students</div>
+    </div>
+    <div class="table-responsive student-table-scroll">
       <table class="report-table">
         <thead>
           <tr>
@@ -248,11 +268,10 @@
             <th>Status</th>
             <th>Latest BMI</th>
             <th>Meals</th>
-            <th>Nutrition Served</th>
           </tr>
         </thead>
-        <tbody>
-          @forelse($reportRows as $row)
+        <tbody id="studentReportRows">
+          @foreach($reportRows as $row)
             @php
               $statusClass = match($row['status']) {
                 'Normal' => 'normal',
@@ -261,7 +280,7 @@
                 default => 'missing',
               };
             @endphp
-            <tr>
+            <tr data-student-row data-status="{{ strtolower($row['status']) }}">
               <td>
                 <div class="report-name">
                   <span class="file-icon"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
@@ -272,13 +291,11 @@
               <td><span class="badge-soft {{ $statusClass }}">{{ $row['status'] }}</span></td>
               <td>{{ $row['bmi'] ?? 'No BMI' }}<br><span class="reports-subtitle">{{ $row['measured_at'] ?? 'Not screened' }}</span></td>
               <td>{{ number_format($row['meals_served']) }}</td>
-              <td>{{ number_format($row['calories']) }} kcal &middot; {{ number_format($row['protein_g'], 1) }}g protein</td>
             </tr>
-          @empty
-            <tr>
-              <td colspan="6">No students match the selected report filters.</td>
-            </tr>
-          @endforelse
+          @endforeach
+          <tr id="studentReportEmpty" @if($reportRows->isNotEmpty()) hidden @endif>
+            <td colspan="5">No students match your search and status filter.</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -287,6 +304,32 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  const studentReportSearch = document.getElementById('studentReportSearch');
+  const studentReportStatus = document.getElementById('studentReportStatus');
+  const studentReportCount = document.getElementById('studentReportCount');
+  const studentReportEmpty = document.getElementById('studentReportEmpty');
+  const studentReportRows = Array.from(document.querySelectorAll('[data-student-row]'));
+
+  function filterStudentReport() {
+    const search = studentReportSearch.value.trim().toLowerCase();
+    const status = studentReportStatus.value;
+    let visible = 0;
+
+    studentReportRows.forEach((row) => {
+      const matchesSearch = search === '' || row.textContent.toLowerCase().includes(search);
+      const matchesStatus = status === '' || row.dataset.status === status;
+      const show = matchesSearch && matchesStatus;
+      row.hidden = !show;
+      if (show) visible++;
+    });
+
+    studentReportCount.textContent = `${visible} ${visible === 1 ? 'student' : 'students'}`;
+    studentReportEmpty.hidden = visible !== 0;
+  }
+
+  studentReportSearch.addEventListener('input', filterStudentReport);
+  studentReportStatus.addEventListener('change', filterStudentReport);
+
   const labels = @json($trendLabels);
   const bmiTrend = @json($bmiTrend);
   const screeningProgress = @json($screeningProgress);

@@ -13,7 +13,7 @@ class Food extends Model
     protected $table = 'foods';
 
     protected $fillable = [
-        'name','portion','kcal','protein_g','carbs_g','fat_g','iron_mg','vit_a_iu','vit_c_mg','calcium_mg','school_id','recipe'
+        'name', 'portion', 'school_id', 'recipe'
     ];
 
     public function school()

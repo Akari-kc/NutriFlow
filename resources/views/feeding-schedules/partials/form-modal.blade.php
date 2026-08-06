@@ -77,7 +77,7 @@
               </div>
               <div class="student-picker-list">
                 @foreach($students as $student)
-                  <label class="student-picker-row" data-student-row data-name="{{ Str::lower($student->name) }}" data-grade="{{ $student->class_name }}" data-section="{{ $student->section }}">
+                  <label class="student-picker-row" data-student-row data-name="{{ Str::lower($student->name) }}" data-grade="{{ $student->class_name }}" data-section="{{ $student->section }}" data-allergies="{{ $student->allergies }}">
                     <span>
                       <span class="student-picker-name">{{ $student->name }}</span>
                       <span class="student-picker-meta d-block">{{ $student->class_name }} - Section {{ $student->section }}</span>
@@ -92,12 +92,13 @@
               <label class="form-label">Menu Items</label>
               <div class="menu-picker-list">
                 @foreach($foods as $food)
-                  <label class="menu-picker-row">
+                  <label class="menu-picker-row" data-food-row data-food-name="{{ $food->name }}" data-food-text="{{ trim($food->name.' '.$food->portion.' '.$food->recipe.' '.implode(' ', $food->allergyAlerts())) }}">
                     <span>{{ $food->name }}</span>
                     <input class="form-check-input" type="checkbox" name="selected_food_ids[]" value="{{ $food->id }}" @checked(in_array($food->id, $selectedFoodIds, true))>
                   </label>
                 @endforeach
               </div>
+              <div class="allergy-notice mt-2" data-allergy-warning hidden></div>
             </div>
             <div class="full">
               <label class="form-label">Notes</label>
@@ -139,12 +140,72 @@
     const grade = picker.querySelector('[data-student-grade]');
     const section = picker.querySelector('[data-student-section]');
     const rows = Array.from(picker.querySelectorAll('[data-student-row]'));
+    const foodRows = Array.from(modal.querySelectorAll('[data-food-row]'));
     const count = picker.querySelector('[data-student-count]');
+    const allergyWarning = modal.querySelector('[data-allergy-warning]');
     const sectionOptions = Array.from(section.options);
 
     function updateCount() {
       const selected = rows.filter((row) => row.querySelector('input[type="checkbox"]').checked).length;
       count.textContent = selected + ' ' + (selected === 1 ? 'student' : 'students') + ' selected';
+      updateAllergyWarning();
+    }
+
+    function allergyTerms(allergy) {
+      const base = (allergy || '').trim().toLowerCase();
+      const terms = [base];
+      const aliases = {
+        'milk': ['milk', 'dairy', 'lactose', 'cheese', 'cream', 'butter'],
+        'lactose': ['milk', 'dairy', 'lactose'],
+        'egg': ['egg', 'eggs'],
+        'eggs': ['egg', 'eggs'],
+        'peanuts': ['peanut', 'peanuts', 'nut'],
+        'tree nuts': ['tree nuts', 'nut', 'almond', 'cashew', 'walnut'],
+        'wheat/gluten': ['wheat', 'gluten', 'flour', 'bread', 'noodle', 'pancit'],
+        'shellfish': ['shellfish', 'shrimp', 'crab', 'squid']
+      };
+      Object.keys(aliases).forEach((key) => {
+        if (base === key || base.includes(key)) terms.push(...aliases[key]);
+      });
+      return Array.from(new Set(terms.filter(Boolean)));
+    }
+
+    function splitAllergies(value) {
+      return (value || '').split(/[,;\n]+/).map((item) => item.trim()).filter(Boolean);
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, function(character) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'}[character];
+      });
+    }
+
+    function updateAllergyWarning() {
+      if (!allergyWarning) return;
+      const checkedStudents = rows.filter((row) => row.querySelector('input[type="checkbox"]').checked);
+      const checkedFoods = foodRows.filter((row) => row.querySelector('input[type="checkbox"]').checked);
+      const warnings = [];
+
+      checkedStudents.forEach((studentRow) => {
+        const allergies = splitAllergies(studentRow.dataset.allergies);
+        if (!allergies.length) return;
+        checkedFoods.forEach((foodRow) => {
+          const foodText = (foodRow.dataset.foodText || '').toLowerCase();
+          const matched = allergies.some((allergy) => allergyTerms(allergy).some((term) => foodText.includes(term)));
+          if (matched) {
+            warnings.push(studentRow.querySelector('.student-picker-name').textContent + ': ' + foodRow.dataset.foodName + ' may contain ' + allergies.join(', '));
+          }
+        });
+      });
+
+      if (!warnings.length) {
+        allergyWarning.hidden = true;
+        allergyWarning.innerHTML = '';
+        return;
+      }
+
+      allergyWarning.hidden = false;
+      allergyWarning.innerHTML = '<div>Allergy warning</div><ul>' + warnings.slice(0, 4).map((warning) => '<li>' + escapeHtml(warning) + '</li>').join('') + (warnings.length > 4 ? '<li>' + (warnings.length - 4) + ' more warning' + (warnings.length - 4 === 1 ? '' : 's') + '</li>' : '') + '</ul>';
     }
 
     function filterRows() {
@@ -183,11 +244,14 @@
     grade.addEventListener('change', syncSectionOptions);
     section.addEventListener('change', filterRows);
     rows.forEach((row) => row.querySelector('input[type="checkbox"]').addEventListener('change', updateCount));
+    foodRows.forEach((row) => row.querySelector('input[type="checkbox"]').addEventListener('change', updateAllergyWarning));
     modal.addEventListener('shown.bs.modal', function () {
       syncSectionOptions();
       updateCount();
+      updateAllergyWarning();
     });
     syncSectionOptions();
     updateCount();
+    updateAllergyWarning();
   })();
 </script>

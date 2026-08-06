@@ -160,22 +160,20 @@
     <div class="nl-card panel h-100">
       <div class="d-flex justify-content-between align-items-start mb-2">
         <div>
-          <div class="panel-title">Meal Suggestions</div>
-          <div class="panel-subtitle mb-0">For undernourished students</div>
+          <div class="panel-title">Menu Items</div>
+          <div class="panel-subtitle mb-0">Available for meal planning</div>
         </div>
         <a href="{{ route('menu-items.index') }}" class="small fw-bold text-decoration-none">View all</a>
       </div>
       @if(!empty($suggestion['items']) && count($suggestion['items']))
         <div class="table-responsive">
           <table class="table suggestion-table align-middle mb-0">
-            <thead><tr><th>Food</th><th>Portion</th><th class="text-end">kcal</th><th class="text-end">Protein</th></tr></thead>
+            <thead><tr><th>Food</th><th>Portion</th></tr></thead>
             <tbody>
               @foreach($suggestion['items'] as $f)
                 <tr>
                   <td class="fw-semibold">{{ $f->name }}</td>
                   <td>{{ $f->portion }}</td>
-                  <td class="text-end">{{ (int)($f->kcal ?? 0) }}</td>
-                  <td class="text-end">{{ number_format((float)($f->protein_g ?? 0),1) }}g</td>
                 </tr>
               @endforeach
             </tbody>

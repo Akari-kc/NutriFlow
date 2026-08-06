@@ -3,11 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Student, Meal, MealItem, Food, GrowthMeasurement};
+use App\Models\{Student, Meal, Food, GrowthMeasurement};
 use App\DemoDataEnricher;
 use App\Support\ChildBmiClassifier;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class NutritionAideController extends Controller
 {
@@ -22,38 +21,6 @@ class NutritionAideController extends Controller
         $studentsQ = Student::query();
         if ($schoolId) { $studentsQ->where('school_id', $schoolId); }
         $studentCount = (int) $studentsQ->count();
-
-            $avgCaloriesQ = MealItem::join('foods','foods.id','=','meal_items.food_id')
-                ->join('meals','meals.id','=','meal_items.meal_id');
-            if ($schoolId) {
-                $avgCaloriesQ->join('students','students.id','=','meals.student_id')
-                    ->where('students.school_id', $schoolId);
-            }
-            $avgCalories = $avgCaloriesQ
-                ->where('meals.served_at','>=', Carbon::now('Asia/Manila')->subDays(7))
-                ->avg(DB::raw('meal_items.quantity * foods.kcal')) ?? 0;
-
-            $avgProteinQ = MealItem::join('foods','foods.id','=','meal_items.food_id')
-                ->join('meals','meals.id','=','meal_items.meal_id');
-            if ($schoolId) {
-                $avgProteinQ->join('students','students.id','=','meals.student_id')
-                    ->where('students.school_id', $schoolId);
-            }
-            $avgProtein = $avgProteinQ
-                ->where('meals.served_at','>=', Carbon::now('Asia/Manila')->subDays(7))
-                ->avg(DB::raw('meal_items.quantity * foods.protein_g')) ?? 0;
-
-            $today = Carbon::today('Asia/Manila');
-            $intakeByStudent = MealItem::select('meals.student_id', DB::raw('SUM(meal_items.quantity * foods.kcal) as kcal'))
-                ->join('foods','foods.id','=','meal_items.food_id')
-                ->join('meals','meals.id','=','meal_items.meal_id')
-                ->when($schoolId, function($q) use ($schoolId){
-                    $q->join('students','students.id','=','meals.student_id')
-                      ->where('students.school_id', $schoolId);
-                })
-                ->whereBetween('meals.served_at', [$today, (clone $today)->endOfDay()])
-                ->groupBy('meals.student_id')
-                ->pluck('kcal','meals.student_id');
 
             $todayMealsCount = Meal::when($schoolId, fn($q)=> $q->whereHas('student', fn($qq)=>$qq->where('school_id',$schoolId)))
                 ->whereBetween('served_at',[now('Asia/Manila')->startOfDay(), now('Asia/Manila')->endOfDay()])
@@ -122,8 +89,6 @@ class NutritionAideController extends Controller
                     'moderate_count' => $moderateCount,
                     'meals_today' => $todayMealsCount,
                     'at_risk_percent' => $atRiskPercent,
-                    'avg_calories' => round($avgCalories),
-                    'avg_protein' => round($avgProtein, 1),
                 ];
 
             // Today meals (paginated)
@@ -135,19 +100,12 @@ class NutritionAideController extends Controller
                 ->paginate(5, ['*'], 'tm_page', $tmPage)
                 ->withQueryString();
 
-            // Meal suggestions: simple heuristic based on the school's current risk profile.
-            $statuses = Student::when($schoolId, fn($q)=>$q->where('school_id',$schoolId))
-                ->with('latestMeasurement')->get()
-                ->map(fn($student) => ChildBmiClassifier::classifyForStudent($student, $student->latestMeasurement));
-            $need = $statuses->contains(fn($status) => ChildBmiClassifier::isUndernourished($status)) ? 'Undernourished' : 'Balanced';
-            $foodsQ = Food::select('id','name','portion','kcal','protein_g','carbs_g','fat_g');
+            $foodsQ = Food::select('id', 'name', 'portion');
             $foods = $schoolId ? (clone $foodsQ)->where('school_id',$schoolId)->get() : $foodsQ->get();
             if ($foods->isEmpty()) {
-                $foods = Food::select('id','name','portion','kcal','protein_g','carbs_g','fat_g')->get();
+                $foods = Food::select('id', 'name', 'portion')->get();
             }
-            $suggested = $need === 'Undernourished'
-                ? $foods->sortByDesc('kcal')->filter(fn($f)=> (float)($f->protein_g ?? 0) >= 5)->take(5)
-                : $foods->filter(fn($f)=> ($f->kcal ?? 0) >= 120 && ($f->kcal ?? 0) <= 400)->sortByDesc('protein_g')->take(5);
+            $suggested = $foods->sortBy('name')->take(5);
 
             return view('dashboards.aide', [
                 'kpis' => $kpis,
@@ -161,7 +119,7 @@ class NutritionAideController extends Controller
                 'hasChartData' => $hasChartData,
                 'atRiskStudents' => $atRiskStudents,
                 'todayMeals' => $todayMeals,
-                'suggestion' => [ 'need' => $need, 'items' => $suggested ],
+                'suggestion' => ['items' => $suggested],
             ]);
     }
 }
