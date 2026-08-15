@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>@yield('title', config('app.name', 'NutriFlow'))</title>
-  <link rel="icon" type="image/png" href="{{ asset('images/nutrilog_logo.png') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ asset('assets/nutriflow-logo.svg') }}">
   <meta name="theme-color" content="#7ec043">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,11 +49,21 @@
     }
     .brand-block { display: flex; align-items: center; gap: .7rem; padding: 1.2rem .55rem 1.6rem; }
     .brand-mark {
-      width: 38px; height: 38px; border-radius: 50%;
-      display: grid; place-items: center;
-      border: 2px solid rgba(255,183,3,.55);
-      color: var(--nf-amber);
-      font-size: 1.15rem;
+      position: relative;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      overflow: hidden;
+      border-radius: 12px;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,.18));
+    }
+    .brand-logo-art {
+      position: absolute;
+      top: 2.5%;
+      left: -34.2%;
+      width: 168.3%;
+      height: auto;
+      max-width: none;
     }
     .svg-icon { width: 1rem; height: 1rem; flex: 0 0 auto; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
     .svg-icon.solid { fill: currentColor; stroke: none; }
@@ -198,7 +208,7 @@
   <aside class="sidebar">
     <div class="brand-block">
       <div class="brand-mark">
-        <svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V9"/><path d="M12 9c-4 0-6-2-6-6 4 0 6 2 6 6Z"/><path d="M12 12c4 0 6-2 6-6-4 0-6 2-6 6Z"/><path d="M7 21h10"/></svg>
+        <img class="brand-logo-art" src="{{ asset('assets/nutriflow-logo.svg') }}" alt="">
       </div>
       <div>
         <div class="brand-title">NutriFlow</div>
