@@ -104,14 +104,16 @@
         <div class="text-muted">{{ $student->gender ?? '-' }} &middot; {{ $student->class_name ?? '-' }}, Section {{ $student->section ?? '-' }}</div>
       </div>
     </div>
-    <div class="profile-actions">
-      <a href="{{ route('students.edit', $student) }}" class="btn btn-outline-primary btn-sm nl-btn">Edit</a>
-      <form method="POST" action="{{ route('students.destroy', $student) }}" onsubmit="return confirm('Remove this student? This will also delete their meals and measurements.');">
-        @csrf
-        @method('DELETE')
-        <button type="submit" class="btn btn-outline-danger btn-sm nl-btn">Remove</button>
-      </form>
-    </div>
+    @if(auth()->user()?->isSchoolAdmin())
+      <div class="profile-actions">
+        <a href="{{ route('students.edit', $student) }}" class="btn btn-outline-primary btn-sm nl-btn">Edit</a>
+        <form method="POST" action="{{ route('students.destroy', $student) }}" onsubmit="return confirm('Remove this student? This will also delete their meals and measurements.');">
+          @csrf
+          @method('DELETE')
+          <button type="submit" class="btn btn-outline-danger btn-sm nl-btn">Remove</button>
+        </form>
+      </div>
+    @endif
   </div>
 
   <div class="profile-facts">
@@ -333,8 +335,10 @@
           <div class="text-muted">No allergies recorded.</div>
         @endforelse
       </div>
-      <div class="small text-muted mt-3">Edit allergy records from the child edit page.</div>
-      <a href="{{ route('students.edit', $student) }}" class="btn btn-outline-primary btn-sm nl-btn mt-2">Edit Child</a>
+      @if(auth()->user()?->isSchoolAdmin())
+        <div class="small text-muted mt-3">Edit allergy records from the child edit page.</div>
+        <a href="{{ route('students.edit', $student) }}" class="btn btn-outline-primary btn-sm nl-btn mt-2">Edit Child</a>
+      @endif
     </div>
   </div>
 </div>

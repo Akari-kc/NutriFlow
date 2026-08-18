@@ -2,17 +2,17 @@
 
 namespace Database\Seeders;
 
+use App\Models\Food;
 use App\Models\GradeSection;
 use App\Models\GrowthMeasurement;
-use App\Models\Food;
 use App\Models\Meal;
 use App\Models\MealItem;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Database\Seeder;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -21,7 +21,7 @@ class FilipinoElementaryRosterSeeder extends Seeder
     public function run(): void
     {
         $school = $this->targetSchool();
-        $aide = User::where('email', 'aide@example.com')->first() ?? User::where('role', 'aide')->first();
+        $aide = User::where('email', 'aide@example.com')->first() ?? User::where('role', User::ROLE_SCHOOL_ADMIN)->first();
         if ($aide) {
             $aide->update(['school_id' => $school->id]);
         }
@@ -162,15 +162,15 @@ class FilipinoElementaryRosterSeeder extends Seeder
         $this->copySharedFoodsToSchool($school);
 
         $aide = User::where('email', 'aide@example.com')->where('school_id', $school->id)->first()
-            ?? User::where('role', 'aide')->where('school_id', $school->id)->first();
-        $foods = Food::when(Schema::hasColumn('foods', 'school_id'), fn($q) => $q->where(function ($foodQ) use ($school) {
-                $foodQ->where('school_id', $school->id)->orWhereNull('school_id');
-            }))
+            ?? User::where('role', User::ROLE_SCHOOL_ADMIN)->where('school_id', $school->id)->first();
+        $foods = Food::when(Schema::hasColumn('foods', 'school_id'), fn ($q) => $q->where(function ($foodQ) use ($school) {
+            $foodQ->where('school_id', $school->id)->orWhereNull('school_id');
+        }))
             ->orderBy('name')
             ->take(8)
             ->get();
 
-        if (!$aide || $foods->isEmpty()) {
+        if (! $aide || $foods->isEmpty()) {
             return;
         }
 
@@ -211,7 +211,7 @@ class FilipinoElementaryRosterSeeder extends Seeder
 
     private function copySharedFoodsToSchool(School $school): void
     {
-        if (!Schema::hasColumn('foods', 'school_id')) {
+        if (! Schema::hasColumn('foods', 'school_id')) {
             return;
         }
 

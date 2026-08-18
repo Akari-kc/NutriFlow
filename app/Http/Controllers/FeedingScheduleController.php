@@ -8,8 +8,8 @@ use App\Models\Meal;
 use App\Models\MealItem;
 use App\Models\Student;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -45,11 +45,11 @@ class FeedingScheduleController extends Controller
         ];
 
         $query = FeedingSchedule::query()
-            ->when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->whereDate('session_date', '>=', $start->toDateString())
             ->whereDate('session_date', '<=', $end->toDateString())
-            ->when($filters['meal_type'] !== 'All', fn($q) => $q->where('meal_type', $filters['meal_type']))
-            ->when($filters['status'] !== 'All', fn($q) => $q->where('status', $filters['status']));
+            ->when($filters['meal_type'] !== 'All', fn ($q) => $q->where('meal_type', $filters['meal_type']))
+            ->when($filters['status'] !== 'All', fn ($q) => $q->where('status', $filters['status']));
 
         $sessions = $query
             ->orderBy('session_date')
@@ -71,19 +71,19 @@ class FeedingScheduleController extends Controller
             })->values();
         }
 
-        $groupedSessions = $sessions->groupBy(fn($session) => $session->session_date->toDateString());
-        $students = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $groupedSessions = $sessions->groupBy(fn ($session) => $session->session_date->toDateString());
+        $students = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('class_name')
             ->orderBy('section')
             ->orderBy('name')
             ->get(['id', 'name', 'class_name', 'section', 'allergies']);
-        $foods = Food::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $foods = Food::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('name')
             ->get(['id', 'name', 'portion', 'recipe']);
         $classes = $students->pluck('class_name')->filter()->unique()->values();
         $sections = $students->pluck('section')->filter()->unique()->sort()->values();
         $sessionAllergyWarnings = $sessions
-            ->mapWithKeys(fn($session) => [$session->id => $this->allergyWarningsForSchedule($session, $students, $foods)]);
+            ->mapWithKeys(fn ($session) => [$session->id => $this->allergyWarningsForSchedule($session, $students, $foods)]);
 
         return view('feeding-schedules.index', [
             'sessions' => $sessions,
@@ -110,6 +110,7 @@ class FeedingScheduleController extends Controller
         $this->ensureTable();
         $this->ensureMealScheduleColumn();
         $data = $this->validated($request);
+        $this->authorizeSelectedRecords($data);
         $data['school_id'] = auth()->user()?->school_id;
         $data = $this->prepareScheduleData($data);
         $schedule = FeedingSchedule::create($data);
@@ -124,7 +125,9 @@ class FeedingScheduleController extends Controller
     {
         $this->authorizeSchool($feedingSchedule);
         $this->ensureMealScheduleColumn();
-        $feedingSchedule->update($this->prepareScheduleData($this->validated($request)));
+        $data = $this->validated($request);
+        $this->authorizeSelectedRecords($data);
+        $feedingSchedule->update($this->prepareScheduleData($data));
         $this->syncCompletedMealLogs($feedingSchedule->fresh());
 
         return redirect()
@@ -162,8 +165,8 @@ class FeedingScheduleController extends Controller
 
     private function prepareScheduleData(array $data): array
     {
-        $studentIds = collect($data['participant_student_ids'])->map(fn($id) => (int) $id)->unique()->values();
-        $foodIds = collect($data['selected_food_ids'])->map(fn($id) => (int) $id)->unique()->values();
+        $studentIds = collect($data['participant_student_ids'])->map(fn ($id) => (int) $id)->unique()->values();
+        $foodIds = collect($data['selected_food_ids'])->map(fn ($id) => (int) $id)->unique()->values();
 
         $students = Student::whereIn('id', $studentIds)->orderBy('name')->get(['name', 'class_name', 'section']);
         $foods = Food::whereIn('id', $foodIds)->orderBy('name')->pluck('name')->values();
@@ -174,13 +177,28 @@ class FeedingScheduleController extends Controller
         $data['batch_name'] = trim($data['session_name']);
         unset($data['session_name']);
         $data['grade_range'] = $students
-            ->map(fn($student) => trim(($student->class_name ?? '').' '.$student->section))
+            ->map(fn ($student) => trim(($student->class_name ?? '').' '.$student->section))
             ->filter()
             ->unique()
             ->implode(', ');
         $data['menu_items'] = $foods->implode(', ');
 
         return $data;
+    }
+
+    private function authorizeSelectedRecords(array $data): void
+    {
+        $schoolId = auth()->user()?->school_id;
+        if (! $schoolId) {
+            return;
+        }
+
+        $studentIds = collect($data['participant_student_ids'])->map(fn ($id) => (int) $id)->unique()->values();
+        $foodIds = collect($data['selected_food_ids'])->map(fn ($id) => (int) $id)->unique()->values();
+        $studentCount = Student::where('school_id', $schoolId)->whereIn('id', $studentIds)->count();
+        $foodCount = Food::where('school_id', $schoolId)->whereIn('id', $foodIds)->count();
+
+        abort_unless($studentCount === $studentIds->count() && $foodCount === $foodIds->count(), 403);
     }
 
     private function authorizeSchool(FeedingSchedule $schedule): void
@@ -192,7 +210,7 @@ class FeedingScheduleController extends Controller
 
     private function ensureTable(): void
     {
-        if (!Schema::hasTable('feeding_schedules')) {
+        if (! Schema::hasTable('feeding_schedules')) {
             Schema::create('feeding_schedules', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('school_id')->nullable();
@@ -216,13 +234,13 @@ class FeedingScheduleController extends Controller
             return;
         }
 
-        if (!Schema::hasColumn('feeding_schedules', 'participant_student_ids')) {
+        if (! Schema::hasColumn('feeding_schedules', 'participant_student_ids')) {
             Schema::table('feeding_schedules', function (Blueprint $table) {
                 $table->text('participant_student_ids')->nullable()->after('grade_range');
             });
         }
 
-        if (!Schema::hasColumn('feeding_schedules', 'selected_food_ids')) {
+        if (! Schema::hasColumn('feeding_schedules', 'selected_food_ids')) {
             Schema::table('feeding_schedules', function (Blueprint $table) {
                 $table->text('selected_food_ids')->nullable()->after('participant_student_ids');
             });
@@ -231,7 +249,7 @@ class FeedingScheduleController extends Controller
 
     private function ensureMealScheduleColumn(): void
     {
-        if (Schema::hasTable('meals') && !Schema::hasColumn('meals', 'feeding_schedule_id')) {
+        if (Schema::hasTable('meals') && ! Schema::hasColumn('meals', 'feeding_schedule_id')) {
             Schema::table('meals', function (Blueprint $table) {
                 $table->unsignedBigInteger('feeding_schedule_id')->nullable()->after('logged_by_user_id');
             });
@@ -243,11 +261,11 @@ class FeedingScheduleController extends Controller
         $this->ensureMealScheduleColumn();
         $schoolId = auth()->user()?->school_id;
 
-        FeedingSchedule::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        FeedingSchedule::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('status', 'Completed')
             ->get()
             ->each(function ($schedule) {
-                if (!Meal::where('feeding_schedule_id', $schedule->id)->exists()) {
+                if (! Meal::where('feeding_schedule_id', $schedule->id)->exists()) {
                     $this->syncCompletedMealLogs($schedule);
                 }
             });
@@ -255,7 +273,7 @@ class FeedingScheduleController extends Controller
 
     private function syncCompletedMealLogs(FeedingSchedule $schedule): void
     {
-        if (!$schedule) {
+        if (! $schedule) {
             return;
         }
 
@@ -268,8 +286,8 @@ class FeedingScheduleController extends Controller
                 return;
             }
 
-            $studentIds = collect($schedule->participant_student_ids)->filter()->map(fn($id) => (int) $id)->unique()->values();
-            $foodIds = collect($schedule->selected_food_ids)->filter()->map(fn($id) => (int) $id)->unique()->values();
+            $studentIds = collect($schedule->participant_student_ids)->filter()->map(fn ($id) => (int) $id)->unique()->values();
+            $foodIds = collect($schedule->selected_food_ids)->filter()->map(fn ($id) => (int) $id)->unique()->values();
 
             if ($studentIds->isEmpty() || $foodIds->isEmpty()) {
                 return;
@@ -302,10 +320,10 @@ class FeedingScheduleController extends Controller
     private function backfillExistingSchedules(): void
     {
         $schoolId = auth()->user()?->school_id;
-        $students = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->orderBy('name')->get();
-        $foods = Food::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->orderBy('name')->get();
+        $students = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->orderBy('name')->get();
+        $foods = Food::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->orderBy('name')->get();
 
-        FeedingSchedule::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        FeedingSchedule::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->whereNull('participant_student_ids')
             ->get()
             ->each(function ($schedule) use ($students, $foods) {
@@ -326,13 +344,13 @@ class FeedingScheduleController extends Controller
     private function seedDefaults(): void
     {
         $schoolId = auth()->user()?->school_id;
-        if (FeedingSchedule::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->exists()) {
+        if (FeedingSchedule::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->exists()) {
             return;
         }
 
         $base = Carbon::now('Asia/Manila')->startOfWeek()->addDays(4);
-        $students = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->orderBy('name')->get();
-        $foods = Food::when($schoolId, fn($q) => $q->where('school_id', $schoolId))->orderBy('name')->get();
+        $students = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->orderBy('name')->get();
+        $foods = Food::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->orderBy('name')->get();
         $defaults = [
             ['Breakfast', 'Batch A', 'Grades 1-2', '07:00', '07:30', 82, 'I. Greenfield', 'Arroz Caldo, Fresh Milk, Banana', 'Completed', 0],
             ['Breakfast', 'Batch B', 'Grades 3-4', '07:30', '08:00', 96, 'M. Santos', 'Pandesal, Boiled Egg, Orange Juice', 'Completed', 0],
@@ -385,9 +403,9 @@ class FeedingScheduleController extends Controller
 
     private function foodsForLegacyMenu($foods, string $menu)
     {
-        $menuParts = collect(explode(',', $menu))->map(fn($name) => strtolower(trim($name)))->filter();
+        $menuParts = collect(explode(',', $menu))->map(fn ($name) => strtolower(trim($name)))->filter();
         $foodIds = $foods
-            ->filter(fn($food) => $menuParts->contains(fn($name) => str_contains(strtolower($food->name), $name) || str_contains($name, strtolower($food->name))))
+            ->filter(fn ($food) => $menuParts->contains(fn ($name) => str_contains(strtolower($food->name), $name) || str_contains($name, strtolower($food->name))))
             ->pluck('id')
             ->values();
 
@@ -396,8 +414,8 @@ class FeedingScheduleController extends Controller
 
     private function allergyWarningsForSchedule(FeedingSchedule $schedule, $students, $foods)
     {
-        $studentIds = collect($schedule->participant_student_ids)->filter()->map(fn($id) => (int) $id)->all();
-        $foodIds = collect($schedule->selected_food_ids)->filter()->map(fn($id) => (int) $id)->all();
+        $studentIds = collect($schedule->participant_student_ids)->filter()->map(fn ($id) => (int) $id)->all();
+        $foodIds = collect($schedule->selected_food_ids)->filter()->map(fn ($id) => (int) $id)->all();
 
         if (empty($studentIds) || empty($foodIds)) {
             return collect();
@@ -415,8 +433,8 @@ class FeedingScheduleController extends Controller
                 }
 
                 return $selectedFoods
-                    ->filter(fn($food) => $this->foodMatchesAnyAllergy($food, $allergies))
-                    ->map(fn($food) => [
+                    ->filter(fn ($food) => $this->foodMatchesAnyAllergy($food, $allergies))
+                    ->map(fn ($food) => [
                         'student' => $student->name,
                         'allergies' => $allergies->implode(', '),
                         'food' => $food->name,
@@ -436,14 +454,14 @@ class FeedingScheduleController extends Controller
         return $allergies->contains(function ($allergy) use ($foodText) {
             $terms = $this->allergySearchTerms((string) $allergy);
 
-            return $terms->contains(fn($term) => $term !== '' && str_contains($foodText, $term));
+            return $terms->contains(fn ($term) => $term !== '' && str_contains($foodText, $term));
         });
     }
 
     private function splitAllergies(?string $allergies)
     {
         return collect(preg_split('/[,;\n]+/', (string) $allergies))
-            ->map(fn($item) => trim($item))
+            ->map(fn ($item) => trim($item))
             ->filter()
             ->values();
     }
@@ -470,6 +488,6 @@ class FeedingScheduleController extends Controller
             }
         }
 
-        return $terms->map(fn($term) => strtolower(trim($term)))->filter()->unique()->values();
+        return $terms->map(fn ($term) => strtolower(trim($term)))->filter()->unique()->values();
     }
 }

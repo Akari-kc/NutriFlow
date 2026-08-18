@@ -144,8 +144,10 @@
         </select>
       </div>
       <button class="report-btn primary" type="submit">Apply</button>
-      <a class="report-btn pdf" href="{{ route('reports.export.pdf', $exportQuery) }}" target="_blank"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg> Export PDF</a>
-      <a class="report-btn excel" href="{{ route('reports.export.csv', $exportQuery) }}"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M8 9h2"/></svg> Export CSV</a>
+      @if(auth()->user()?->isSchoolAdmin())
+        <a class="report-btn pdf" href="{{ route('reports.export.pdf', $exportQuery) }}" target="_blank"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg> Export PDF</a>
+        <a class="report-btn excel" href="{{ route('reports.export.csv', $exportQuery) }}"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M8 9h2"/></svg> Export CSV</a>
+      @endif
     </div>
   </form>
 
@@ -242,9 +244,11 @@
         <h2 class="panel-title">Student Report Detail</h2>
         <div class="panel-subtitle">Latest nutrition status plus meals served during the selected period</div>
       </div>
-      <div class="table-actions">
-        <a class="report-btn primary" href="{{ route('reports.export.csv', $exportQuery) }}"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg> Download CSV</a>
-      </div>
+      @if(auth()->user()?->isSchoolAdmin())
+        <div class="table-actions">
+          <a class="report-btn primary" href="{{ route('reports.export.csv', $exportQuery) }}"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg> Download CSV</a>
+        </div>
+      @endif
     </div>
     <div class="student-table-filters">
       <div class="student-search-wrap">

@@ -107,7 +107,7 @@
           </div>
         </div>
         <div class="modal-footer justify-content-between">
-          @if($isEdit)
+          @if($isEdit && auth()->user()?->isSchoolAdmin())
             <button type="submit" class="btn btn-outline-danger nl-btn" form="deleteSchedule{{ $session->id }}">Delete</button>
           @else
             <span></span>
@@ -118,7 +118,7 @@
           </div>
         </div>
       </form>
-      @if($isEdit)
+      @if($isEdit && auth()->user()?->isSchoolAdmin())
         <form id="deleteSchedule{{ $session->id }}" method="POST" action="{{ route('feeding-schedules.destroy', $session) }}" onsubmit="return confirm('Delete this feeding session?');">
           @csrf
           @method('DELETE')

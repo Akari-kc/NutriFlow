@@ -410,7 +410,7 @@
               <button class="signin-button" type="submit">Sign In</button>
             </form>
 
-            <div class="demo-note">Demo: use <strong>aide@example.com</strong> with password <strong>password</strong></div>
+            <div class="demo-note">School Admin: <strong>aide@example.com</strong> · Nutrition Aide: <strong>nutrition.aide@example.com</strong> · Password: <strong>password</strong></div>
           </div>
         </div>
 

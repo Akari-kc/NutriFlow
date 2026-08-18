@@ -26,9 +26,11 @@
   .risk-moderate { background: #fff8e7; border-color: #f2d391; }
   .risk-dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; }
   .risk-number { font-size: 1.35rem; font-weight: 800; color: #082858; line-height: 1; }
-  .schedule-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; max-height: 250px; overflow: hidden; }
+  .schedule-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; max-height: 280px; overflow-y: auto; }
   .schedule-item { background: #f7f8fb; border: 1px solid #e3e8f2; border-radius: 10px; padding: .95rem; min-height: 96px; }
   .slot-icon { color: #d89000; font-weight: 800; font-size: .78rem; }
+  .schedule-date-label { min-width: 76px; text-align: center; color: #082858; }
+  .schedule-empty { grid-column: 1 / -1; min-height: 150px; display: grid; place-items: center; text-align: center; color: #7687aa; border: 1px dashed #cbd6e6; border-radius: 10px; background: #f8fafc; padding: 1.2rem; }
   .dash-arrow { color: #98a6bf; font-weight: 800; }
   .suggestion-table th { color: #7c8bad; font-size: .78rem; font-weight: 600; }
   .suggestion-table td { color: #082858; font-size: .88rem; padding: .78rem .35rem; }
@@ -127,33 +129,8 @@
 
 <div class="row g-3">
   <div class="col-xl-5">
-    <div class="nl-card panel h-100">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <div class="panel-title mb-0">Feeding Schedule</div>
-        <div class="d-flex align-items-center gap-2 small fw-bold">
-          <button class="btn btn-light btn-sm nl-btn" type="button">&lsaquo;</button>
-          <span>{{ now('Asia/Manila')->format('D, M j') }}</span>
-          <button class="btn btn-light btn-sm nl-btn" type="button">&rsaquo;</button>
-          <a href="{{ route('feeding-schedules.index', ['mode' => 'week', 'date' => now('Asia/Manila')->toDateString()]) }}" class="btn btn-primary btn-sm nl-btn">Today</a>
-        </div>
-      </div>
-      <div class="schedule-grid">
-        @foreach([
-          ['07:00 AM', 'Batch A', 'Grades 1-2', 'AM'],
-          ['07:30 AM', 'Batch B', 'Grades 3-4', 'AM'],
-          ['12:00 PM', 'Batch A', 'Grades 1-2', 'PM'],
-          ['12:30 PM', 'Batch B', 'Grades 3-4', 'PM'],
-        ] as $slot)
-          <div class="schedule-item">
-            <div class="d-flex justify-content-between">
-              <div class="fw-bold small">{{ $slot[0] }}</div>
-              <span class="slot-icon">{{ $slot[3] }}</span>
-            </div>
-            <div class="fw-bold small mt-1">{{ $slot[1] }}</div>
-            <div class="small text-muted">{{ $slot[2] }}</div>
-          </div>
-        @endforeach
-      </div>
+    <div class="nl-card panel h-100" id="dashboard-feeding-schedule" data-schedule-endpoint="{{ route('dashboard.feeding-schedule') }}">
+      @include('dashboards.partials.feeding-schedule')
     </div>
   </div>
   <div class="col-xl-7">
@@ -188,19 +165,62 @@
 
 <script>
   (function(){
+    const widget = document.getElementById('dashboard-feeding-schedule');
+    if (!widget) return;
+
+    widget.addEventListener('click', async function(event) {
+      const link = event.target.closest('[data-schedule-nav]');
+      if (!link || !widget.contains(link)) return;
+
+      event.preventDefault();
+      const dashboardUrl = new URL(link.href, window.location.href);
+      const endpointUrl = new URL(widget.dataset.scheduleEndpoint, window.location.origin);
+      endpointUrl.searchParams.set('schedule_date', dashboardUrl.searchParams.get('schedule_date'));
+
+      widget.setAttribute('aria-busy', 'true');
+      widget.querySelectorAll('[data-schedule-nav]').forEach(control => control.classList.add('disabled'));
+
+      try {
+        const response = await fetch(endpointUrl, {
+          headers: {
+            'Accept': 'text/html',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (!response.ok) throw new Error('Unable to load the selected schedule date.');
+
+        widget.innerHTML = await response.text();
+        widget.querySelectorAll('[data-schedule-nav]').forEach(control => {
+          const controlUrl = new URL(control.href, window.location.href);
+          const preservedUrl = new URL(dashboardUrl);
+          preservedUrl.searchParams.set('schedule_date', controlUrl.searchParams.get('schedule_date'));
+          control.href = preservedUrl.toString();
+        });
+        window.history.replaceState({}, '', dashboardUrl);
+      } catch (error) {
+        window.location.assign(dashboardUrl);
+      } finally {
+        widget.removeAttribute('aria-busy');
+      }
+    });
+  })();
+
+  (function(){
     const labels = @json($bmiLabels);
     const values = @json($bmiSeries);
     const recordCounts = @json($bmiRecordCounts ?? []);
     const dark = document.body.classList.contains('dark');
     const gridColor = dark ? 'rgba(255,255,255,0.12)' : 'rgba(8,40,88,0.08)';
     const textColor = dark ? '#e9ecef' : '#7c8bad';
+    const seriesColor = dark ? '#ffd166' : '#0b3b82';
     const ctx = document.getElementById('bmiChart').getContext('2d');
     new Chart(ctx, {
       type: 'line',
       data: {
         labels,
         datasets: [
-          { label: 'Average BMI', data: values, borderColor: '#0b3b82', backgroundColor: '#0b3b82', tension: 0.22, pointRadius: 3, pointHoverRadius: 5, borderWidth: 2 }
+          { label: 'Average BMI', data: values, borderColor: seriesColor, backgroundColor: seriesColor, tension: 0.22, pointRadius: 3, pointHoverRadius: 5, borderWidth: 2 }
         ]
       },
       options: {

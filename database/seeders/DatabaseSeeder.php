@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use App\Models\School;
+use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -26,17 +26,26 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        User::updateOrCreate([
-            'email' => 'aide@example.com',
-        ], [
+        $admin = User::firstOrCreate(
+            ['email' => 'aide@example.com'],
+            [
+                'name' => 'Isabel Greenfield',
+                'username' => 'school_admin',
+                'password' => bcrypt('password'),
+                'role' => User::ROLE_SCHOOL_ADMIN,
+                'school_id' => $school->id,
+            ]
+        );
+
+        $admin->update([
             'name' => 'Isabel Greenfield',
-            'username' => 'aide',
-            'password' => bcrypt('password'),
-            'role' => 'aide',
+            'username' => 'school_admin',
+            'role' => User::ROLE_SCHOOL_ADMIN,
             'school_id' => $school->id,
         ]);
 
         $this->call([
+            RbacUserSeeder::class,
             FoodSeeder::class,
             FilipinoElementaryRosterSeeder::class,
         ]);

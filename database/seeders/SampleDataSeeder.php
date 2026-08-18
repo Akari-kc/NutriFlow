@@ -2,12 +2,15 @@
 
 namespace Database\Seeders;
 
+use App\Models\Food;
+use App\Models\Meal;
+use App\Models\MealItem;
+use App\Models\Student;
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
-use Illuminate\Support\Carbon;
-use App\Models\{User, Student, Food, Meal, MealItem};
 
 class SampleDataSeeder extends Seeder
 {
@@ -16,7 +19,7 @@ class SampleDataSeeder extends Seeder
         // Ensure aide exists
         $aide = User::firstOrCreate(
             ['username' => 'aide'],
-            ['name' => 'Nutrition Aide','email' => 'aide@example.com','password' => Hash::make('password'),'role' => 'aide']
+            ['name' => 'School Admin', 'email' => 'aide@example.com', 'password' => Hash::make('password'), 'role' => User::ROLE_SCHOOL_ADMIN]
         );
 
         // Reset data (MySQL safe)
@@ -27,16 +30,16 @@ class SampleDataSeeder extends Seeder
         Food::query()->delete();
         DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
-    // Meals catalog (example dishes)
-    $soup = Food::create(['name' => 'Vegetable Soup','portion'=>'1 cup','kcal'=>95,'protein_g'=>3.5,'carbs_g'=>16,'fat_g'=>2.0,'iron_mg'=>1.6,'vit_a_iu'=>2600,'vit_c_mg'=>12,'calcium_mg'=>40]);
-    $salad = Food::create(['name' => 'Chicken Salad','portion'=>'1 bowl','kcal'=>220,'protein_g'=>20,'carbs_g'=>8,'fat_g'=>12,'iron_mg'=>1.4,'vit_a_iu'=>900,'vit_c_mg'=>15,'calcium_mg'=>60]);
-    $sandwich = Food::create(['name' => 'Egg Sandwich','portion'=>'1 sandwich','kcal'=>300,'protein_g'=>14,'carbs_g'=>32,'fat_g'=>12,'iron_mg'=>2.1,'vit_a_iu'=>500,'vit_c_mg'=>0,'calcium_mg'=>120]);
+        // Meals catalog (example dishes)
+        $soup = Food::create(['name' => 'Vegetable Soup', 'portion' => '1 cup', 'kcal' => 95, 'protein_g' => 3.5, 'carbs_g' => 16, 'fat_g' => 2.0, 'iron_mg' => 1.6, 'vit_a_iu' => 2600, 'vit_c_mg' => 12, 'calcium_mg' => 40]);
+        $salad = Food::create(['name' => 'Chicken Salad', 'portion' => '1 bowl', 'kcal' => 220, 'protein_g' => 20, 'carbs_g' => 8, 'fat_g' => 12, 'iron_mg' => 1.4, 'vit_a_iu' => 900, 'vit_c_mg' => 15, 'calcium_mg' => 60]);
+        $sandwich = Food::create(['name' => 'Egg Sandwich', 'portion' => '1 sandwich', 'kcal' => 300, 'protein_g' => 14, 'carbs_g' => 32, 'fat_g' => 12, 'iron_mg' => 2.1, 'vit_a_iu' => 500, 'vit_c_mg' => 0, 'calcium_mg' => 120]);
 
         // Students (exactly 3)
         $students = [
-            ['name' => 'Alex Cruz','gender'=>'Male','birthdate'=>'2015-03-10','section'=>'A','class_name'=>'Grade 4'],
-            ['name' => 'Bianca Santos','gender'=>'Female','birthdate'=>'2016-06-21','section'=>'B','class_name'=>'Grade 3'],
-            ['name' => 'Carlo Reyes','gender'=>'Male','birthdate'=>'2014-11-05','section'=>'C','class_name'=>'Grade 5'],
+            ['name' => 'Alex Cruz', 'gender' => 'Male', 'birthdate' => '2015-03-10', 'section' => 'A', 'class_name' => 'Grade 4'],
+            ['name' => 'Bianca Santos', 'gender' => 'Female', 'birthdate' => '2016-06-21', 'section' => 'B', 'class_name' => 'Grade 3'],
+            ['name' => 'Carlo Reyes', 'gender' => 'Male', 'birthdate' => '2014-11-05', 'section' => 'C', 'class_name' => 'Grade 5'],
         ];
         $studentModels = [];
         foreach ($students as $s) {
@@ -53,8 +56,8 @@ class SampleDataSeeder extends Seeder
                 'served_at' => $servedAt,
             ]);
             // Example: soup + egg sandwich
-            MealItem::create(['meal_id'=>$meal->id,'food_id'=>$soup->id,'portion_text'=>'1 cup','quantity'=>1]);
-            MealItem::create(['meal_id'=>$meal->id,'food_id'=>$sandwich->id,'portion_text'=>'1 sandwich','quantity'=>1]);
+            MealItem::create(['meal_id' => $meal->id, 'food_id' => $soup->id, 'portion_text' => '1 cup', 'quantity' => 1]);
+            MealItem::create(['meal_id' => $meal->id, 'food_id' => $sandwich->id, 'portion_text' => '1 sandwich', 'quantity' => 1]);
         }
     }
 }
