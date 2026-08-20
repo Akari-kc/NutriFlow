@@ -278,6 +278,10 @@
         border-color: #7f4550;
       }
       body.dark .content-wrap .risk-moderate { background: #342a18; border-color: #7d6223; }
+      body.dark .content-wrap .risk-severe { --risk-alert-accent: #ff8a94; }
+      body.dark .content-wrap .risk-moderate { --risk-alert-accent: #ffd166; }
+      body.dark .content-wrap .risk-card :where(.risk-dot, .risk-label) { color: var(--risk-alert-accent); }
+      body.dark .content-wrap .risk-card .risk-dot { background-color: var(--risk-alert-accent) !important; }
       body.dark .content-wrap .result-box.success { background: #153526; border-color: #2f6b4e; }
       body.dark .modal-header,
       body.dark .modal-footer { border-color: var(--nf-line); }

@@ -25,6 +25,8 @@
   .risk-severe { background: #fff5f4; border-color: #ffc9c4; }
   .risk-moderate { background: #fff8e7; border-color: #f2d391; }
   .risk-dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; }
+  .risk-severe .risk-label { color: #b4232f; }
+  .risk-moderate .risk-label { color: #946200; }
   .risk-number { font-size: 1.35rem; font-weight: 800; color: #082858; line-height: 1; }
   .schedule-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; max-height: 280px; overflow-y: auto; }
   .schedule-item { background: #f7f8fb; border: 1px solid #e3e8f2; border-radius: 10px; padding: .95rem; min-height: 96px; }
@@ -107,7 +109,7 @@
           <span class="risk-dot bg-danger"></span>
           <span class="flex-grow-1">
             <span class="risk-number">{{ $kpis['severe_count'] ?? 0 }}</span>
-            <span class="d-block fw-bold small text-danger-emphasis mt-1">Severely Undernourished</span>
+            <span class="risk-label d-block fw-bold small mt-1">Severely Undernourished</span>
             <span class="d-block small text-muted">Immediate attention needed</span>
           </span>
           <span class="dash-arrow"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
@@ -116,7 +118,7 @@
           <span class="risk-dot bg-warning"></span>
           <span class="flex-grow-1">
             <span class="risk-number">{{ $kpis['moderate_count'] ?? 0 }}</span>
-            <span class="d-block fw-bold small text-warning-emphasis mt-1">Undernourished</span>
+            <span class="risk-label d-block fw-bold small mt-1">Undernourished</span>
             <span class="d-block small text-muted">Requires monitoring</span>
           </span>
           <span class="dash-arrow"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
