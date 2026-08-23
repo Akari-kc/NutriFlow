@@ -2,23 +2,31 @@
 
 namespace Database\Seeders;
 
+use App\Models\Food;
+use App\Models\Meal;
+use App\Models\MealItem;
+use App\Models\Student;
+use App\Models\User;
 use Illuminate\Database\Seeder;
-use App\Models\{Student, Meal, MealItem, Food, User};
 use Illuminate\Support\Carbon;
 
 class MealSeeder extends Seeder
 {
     public function run(): void
     {
-        $aide = User::where('role','aide')->first();
-        if (!$aide) return;
+        $aide = User::where('role', User::ROLE_SCHOOL_ADMIN)->first();
+        if (! $aide) {
+            return;
+        }
 
-    $students = Student::take(3)->get();
-    $soup = Food::where('name','like','%Soup%')->first();
-    $salad = Food::where('name','like','%Salad%')->first();
-    $sandwich = Food::where('name','like','%Sandwich%')->first();
+        $students = Student::take(3)->get();
+        $soup = Food::where('name', 'like', '%Soup%')->first();
+        $salad = Food::where('name', 'like', '%Salad%')->first();
+        $sandwich = Food::where('name', 'like', '%Sandwich%')->first();
 
-    if (!$soup && !$salad && !$sandwich) return; // minimal sanity: need at least one dish
+        if (! $soup && ! $salad && ! $sandwich) {
+            return;
+        } // minimal sanity: need at least one dish
 
         foreach ($students as $s) {
             $meal = Meal::create([
@@ -28,9 +36,15 @@ class MealSeeder extends Seeder
                 'served_at' => Carbon::now()->setTime(12, 0),
             ]);
 
-            if ($soup) { MealItem::create(['meal_id' => $meal->id, 'food_id' => $soup->id, 'portion_text' => '1 cup', 'quantity' => 1]); }
-            if ($sandwich) { MealItem::create(['meal_id' => $meal->id, 'food_id' => $sandwich->id, 'portion_text' => '1 sandwich', 'quantity' => 1]); }
-            if ($salad) { MealItem::create(['meal_id' => $meal->id, 'food_id' => $salad->id, 'portion_text' => '1 bowl', 'quantity' => 1]); }
+            if ($soup) {
+                MealItem::create(['meal_id' => $meal->id, 'food_id' => $soup->id, 'portion_text' => '1 cup', 'quantity' => 1]);
+            }
+            if ($sandwich) {
+                MealItem::create(['meal_id' => $meal->id, 'food_id' => $sandwich->id, 'portion_text' => '1 sandwich', 'quantity' => 1]);
+            }
+            if ($salad) {
+                MealItem::create(['meal_id' => $meal->id, 'food_id' => $salad->id, 'portion_text' => '1 bowl', 'quantity' => 1]);
+            }
         }
     }
 }

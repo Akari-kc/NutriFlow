@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Student;
 use App\Models\Meal;
+use App\Models\Student;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
 class MealController extends Controller
@@ -14,11 +14,11 @@ class MealController extends Controller
     public function index()
     {
         $this->ensureMealScheduleColumn();
-        $query = Meal::with(['student','items.food']);
+        $query = Meal::with(['student', 'items.food']);
         $user = auth()->user();
         $schoolId = $user?->school_id;
         if ($user && $user->school_id) {
-            $query->whereHas('student', function($q) use ($user) {
+            $query->whereHas('student', function ($q) use ($user) {
                 $q->where('school_id', $user->school_id);
             });
         }
@@ -35,12 +35,12 @@ class MealController extends Controller
         ];
 
         $query
-            ->when($filters['date_from'], fn($q, $date) => $q->where('served_at', '>=', Carbon::parse($date, 'Asia/Manila')->startOfDay()))
-            ->when($filters['date_to'], fn($q, $date) => $q->where('served_at', '<=', Carbon::parse($date, 'Asia/Manila')->endOfDay()))
-            ->when($filters['time_from'], fn($q, $time) => $q->whereTime('served_at', '>=', $time))
-            ->when($filters['time_to'], fn($q, $time) => $q->whereTime('served_at', '<=', $time))
+            ->when($filters['date_from'], fn ($q, $date) => $q->where('served_at', '>=', Carbon::parse($date, 'Asia/Manila')->startOfDay()))
+            ->when($filters['date_to'], fn ($q, $date) => $q->where('served_at', '<=', Carbon::parse($date, 'Asia/Manila')->endOfDay()))
+            ->when($filters['time_from'], fn ($q, $time) => $q->whereTime('served_at', '>=', $time))
+            ->when($filters['time_to'], fn ($q, $time) => $q->whereTime('served_at', '<=', $time))
             ->when($filters['q'] !== '', function ($q) use ($filters) {
-                $q->whereHas('student', fn($studentQ) => $studentQ->where('name', 'like', "%{$filters['q']}%"));
+                $q->whereHas('student', fn ($studentQ) => $studentQ->where('name', 'like', "%{$filters['q']}%"));
             })
             ->when($filters['class_name'] || $filters['section'], function ($q) use ($filters) {
                 $q->whereHas('student', function ($studentQ) use ($filters) {
@@ -53,18 +53,18 @@ class MealController extends Controller
                 });
             });
 
-        $students = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $students = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('name')
             ->get(['id', 'name', 'class_name', 'section']);
         $studentSuggestions = $students->pluck('name')->unique()->values();
-        $classes = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $classes = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->select('class_name')
             ->distinct()
             ->pluck('class_name')
             ->filter()
-            ->sortBy(fn($grade) => strcasecmp($grade, 'Kinder') === 0 ? 0 : (int) preg_replace('/\D+/', '', $grade))
+            ->sortBy(fn ($grade) => strcasecmp($grade, 'Kinder') === 0 ? 0 : (int) preg_replace('/\D+/', '', $grade))
             ->values();
-        $sections = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        $sections = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->select('section')
             ->distinct()
             ->pluck('section')
@@ -92,19 +92,23 @@ class MealController extends Controller
         $className = request('class_name');
         $section = request('section');
         $search = trim((string) request('q', ''));
-        if ($className) { $studentsQ->where('class_name', $className); }
-        if ($section) { $studentsQ->where('section', $section); }
+        if ($className) {
+            $studentsQ->where('class_name', $className);
+        }
+        if ($section) {
+            $studentsQ->where('section', $section);
+        }
         if ($search !== '') {
             $studentsQ->where('name', 'like', "%{$search}%");
         }
 
         // Distinct lists for filters (scoped)
-        $classes = \App\Models\Student::when($user && $user->school_id, fn($q)=>$q->where('school_id',$user->school_id))
+        $classes = \App\Models\Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
             ->select('class_name')->distinct()->pluck('class_name')->filter()->values();
-        $sections = \App\Models\Student::when($user && $user->school_id, fn($q)=>$q->where('school_id',$user->school_id))
+        $sections = \App\Models\Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
             ->select('section')->distinct()->pluck('section')->filter()->values();
         $gradeSections = $this->gradeSections($user?->school_id);
-        $studentSuggestions = \App\Models\Student::when($user && $user->school_id, fn($q)=>$q->where('school_id',$user->school_id))
+        $studentSuggestions = \App\Models\Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
             ->orderBy('name')
             ->pluck('name')
             ->unique()
@@ -136,7 +140,16 @@ class MealController extends Controller
         $userId = auth()->id();
         $servedIds = array_values(array_unique($data['served_students'] ?? []));
         if (empty($servedIds)) {
-            return back()->with('status','No students selected.')->withInput();
+            return back()->with('status', 'No students selected.')->withInput();
+        }
+
+        $schoolId = auth()->user()?->school_id;
+        if ($schoolId) {
+            $studentCount = Student::where('school_id', $schoolId)->whereIn('id', $servedIds)->count();
+            $foodIds = collect($data['items'])->pluck('food_id')->unique()->values();
+            $foodCount = \App\Models\Food::where('school_id', $schoolId)->whereIn('id', $foodIds)->count();
+
+            abort_unless($studentCount === count($servedIds) && $foodCount === $foodIds->count(), 403);
         }
 
         // Parse served_at in Manila timezone
@@ -161,7 +174,7 @@ class MealController extends Controller
             }
         });
 
-        return redirect()->route('meals.index')->with('status','Batch meals logged successfully');
+        return redirect()->route('meals.index')->with('status', 'Batch meals logged successfully');
     }
 
     public function destroy(Meal $meal)
@@ -173,24 +186,25 @@ class MealController extends Controller
             }
         }
         $meal->delete();
-        return redirect()->route('meals.index')->with('status','Meal log deleted');
+
+        return redirect()->route('meals.index')->with('status', 'Meal log deleted');
     }
 
     private function gradeSections(?int $schoolId)
     {
-        return Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+        return Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->select('class_name', 'section')
             ->whereNotNull('class_name')
             ->whereNotNull('section')
             ->distinct()
             ->get()
             ->groupBy('class_name')
-            ->map(fn($rows) => $rows->pluck('section')->filter()->unique()->sort()->values());
+            ->map(fn ($rows) => $rows->pluck('section')->filter()->unique()->sort()->values());
     }
 
     private function ensureMealScheduleColumn(): void
     {
-        if (Schema::hasTable('meals') && !Schema::hasColumn('meals', 'feeding_schedule_id')) {
+        if (Schema::hasTable('meals') && ! Schema::hasColumn('meals', 'feeding_schedule_id')) {
             Schema::table('meals', function (Blueprint $table) {
                 $table->unsignedBigInteger('feeding_schedule_id')->nullable()->after('logged_by_user_id');
             });

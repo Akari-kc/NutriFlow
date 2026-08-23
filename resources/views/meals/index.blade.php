@@ -33,6 +33,7 @@
     <h1 class="meals-title">Meal Logs</h1>
     <div class="meals-subtitle">{{ number_format($meals->total() ?? 0) }} completed schedule logs found</div>
   </div>
+  <a href="{{ route('meals.batch') }}" class="btn btn-primary nl-btn">Log Meals</a>
 </div>
 
 <div class="nl-card meal-filter-card">

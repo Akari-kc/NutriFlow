@@ -23,11 +23,40 @@
   .reports-title { font-size: 19px; font-weight: 850; margin: 0; letter-spacing: 0; }
   .reports-subtitle { color: #7688ad; font-size: 12px; margin-top: 4px; }
   .filter-card { padding: 18px; margin: 20px 0; }
-  .filter-grid { display: grid; grid-template-columns: 56px 100px 96px 104px 128px minmax(150px, 1fr) auto auto auto; gap: 12px; align-items: end; }
+  .filter-grid { display: grid; grid-template-columns: 56px 100px 96px 104px minmax(220px, 1.25fr) minmax(150px, 1fr) auto auto auto; gap: 12px; align-items: end; }
   .filter-label { color: #42567e; font-size: 12px; margin-bottom: 5px; }
   .filter-chip { display: flex; align-items: center; gap: 7px; color: #42567e; font-size: 13px; padding-bottom: 8px; }
   .filter-control { height: 34px; border: 1px solid #d3dbea; border-radius: 7px; padding: 0 12px; color: #082858; background: #fff; font-size: 12px; min-width: 0; }
   .filter-control.wide { width: 100%; }
+  .date-range-picker { position: relative; }
+  .date-range-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; white-space: nowrap; }
+  .date-range-trigger .svg-icon { color: #7688ad; }
+  .date-range-popover { position: absolute; z-index: 1080; top: calc(100% + 7px); left: 0; width: 322px; border: 1px solid #d3dbea; border-radius: 12px; background: #fff; box-shadow: 0 16px 38px rgba(8,40,88,.18); padding: 14px; }
+  .date-range-popover[hidden] { display: none; }
+  .date-range-calendar-head { display: grid; grid-template-columns: 32px 1fr 32px; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .date-range-month { color: #082858; font-size: 13px; font-weight: 850; text-align: center; }
+  .date-range-nav { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid #dbe3ef; border-radius: 8px; background: #f8fafc; color: #42567e; }
+  .date-range-weekdays, .date-range-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .date-range-weekdays { margin-bottom: 4px; color: #7688ad; font-size: 10px; font-weight: 800; text-align: center; }
+  .date-range-weekdays span { padding: 4px 0; }
+  .date-range-day { position: relative; height: 34px; border: 0; border-radius: 8px; background: transparent; color: #42567e; font-size: 12px; }
+  .date-range-day:hover, .date-range-day:focus-visible { background: #eaf2ff; color: #0b3b82; outline: none; }
+  .date-range-day.in-range { border-radius: 0; background: #eaf2ff; color: #0b3b82; }
+  .date-range-day.range-start, .date-range-day.range-end { border-radius: 8px; background: #0b3b82; color: #fff; font-weight: 850; }
+  .date-range-day.today:not(.range-start):not(.range-end) { box-shadow: inset 0 0 0 1px #ffb703; color: #9a6700; font-weight: 850; }
+  .date-range-blank { height: 34px; }
+  .date-range-summary { min-height: 18px; margin: 10px 0; color: #526894; font-size: 11px; }
+  .date-range-actions { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #e8edf5; padding-top: 10px; }
+  .date-range-actions .btn { font-size: 11px; font-weight: 800; }
+  body.dark .date-range-popover { background: var(--nf-card); border-color: var(--nf-line); box-shadow: 0 16px 38px rgba(0,0,0,.38); }
+  body.dark .date-range-month { color: var(--nf-text-primary); }
+  body.dark .date-range-nav { background: var(--nf-surface-raised); border-color: var(--nf-line); color: var(--nf-text-secondary); }
+  body.dark .date-range-day { color: var(--nf-text-secondary); }
+  body.dark .date-range-day:hover, body.dark .date-range-day:focus-visible, body.dark .date-range-day.in-range { background: #223d5c; color: #dcebff; }
+  body.dark .date-range-day.range-start, body.dark .date-range-day.range-end { background: #4d8fd1; color: #fff; }
+  body.dark .date-range-day.today:not(.range-start):not(.range-end) { color: var(--nf-accent-text); }
+  body.dark .date-range-summary, body.dark .date-range-weekdays { color: var(--nf-text-muted); }
+  body.dark .date-range-actions { border-color: var(--nf-line); }
   .report-btn { height: 32px; border: 0; border-radius: 8px; padding: 0 16px; font-size: 12px; font-weight: 850; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; }
   .report-btn.primary { background: #0b3b82; color: #fff; }
   .report-btn.pdf { background: #ffe8e8; color: #e11d2e; }
@@ -128,7 +157,29 @@
       </div>
       <div>
         <div class="filter-label">Date Range</div>
-        <input name="date_range" class="filter-control wide" type="text" value="{{ $dateRange }}" placeholder="YYYY-MM-DD to YYYY-MM-DD">
+        <div class="date-range-picker" id="reportDateRangePicker" data-start="{{ $startDate->toDateString() }}" data-end="{{ $endDate->toDateString() }}">
+          <input name="date_range" id="reportDateRangeValue" type="hidden" value="{{ $startDate->toDateString() }} to {{ $endDate->toDateString() }}">
+          <button type="button" class="filter-control wide date-range-trigger" id="reportDateRangeTrigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="reportDateRangePopover">
+            <span id="reportDateRangeText">{{ $startDate->format('M j, Y') }} – {{ $endDate->format('M j, Y') }}</span>
+            <svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+          </button>
+          <div class="date-range-popover" id="reportDateRangePopover" role="dialog" aria-modal="false" aria-label="Choose report date range" hidden>
+            <div class="date-range-calendar-head">
+              <button type="button" class="date-range-nav" data-calendar-previous aria-label="Previous month">&lsaquo;</button>
+              <div class="date-range-month" id="reportDateRangeMonth" aria-live="polite"></div>
+              <button type="button" class="date-range-nav" data-calendar-next aria-label="Next month">&rsaquo;</button>
+            </div>
+            <div class="date-range-weekdays" aria-hidden="true">
+              <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+            <div class="date-range-days" id="reportDateRangeDays"></div>
+            <div class="date-range-summary" id="reportDateRangeSummary" aria-live="polite"></div>
+            <div class="date-range-actions">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-calendar-cancel>Cancel</button>
+              <button type="button" class="btn btn-sm btn-primary" data-calendar-apply>Apply Range</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div>
         <div class="filter-label">Nutritional Status</div>
@@ -144,8 +195,10 @@
         </select>
       </div>
       <button class="report-btn primary" type="submit">Apply</button>
-      <a class="report-btn pdf" href="{{ route('reports.export.pdf', $exportQuery) }}" target="_blank"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg> Export PDF</a>
-      <a class="report-btn excel" href="{{ route('reports.export.csv', $exportQuery) }}"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M8 9h2"/></svg> Export CSV</a>
+      @if(auth()->user()?->isSchoolAdmin())
+        <a class="report-btn pdf" href="{{ route('reports.export.pdf', $exportQuery) }}" target="_blank"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg> Export PDF</a>
+        <a class="report-btn excel" href="{{ route('reports.export.csv', $exportQuery) }}"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M8 9h2"/></svg> Export CSV</a>
+      @endif
     </div>
   </form>
 
@@ -242,9 +295,11 @@
         <h2 class="panel-title">Student Report Detail</h2>
         <div class="panel-subtitle">Latest nutrition status plus meals served during the selected period</div>
       </div>
-      <div class="table-actions">
-        <a class="report-btn primary" href="{{ route('reports.export.csv', $exportQuery) }}"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg> Download CSV</a>
-      </div>
+      @if(auth()->user()?->isSchoolAdmin())
+        <div class="table-actions">
+          <a class="report-btn primary" href="{{ route('reports.export.csv', $exportQuery) }}"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg> Download CSV</a>
+        </div>
+      @endif
     </div>
     <div class="student-table-filters">
       <div class="student-search-wrap">
@@ -304,6 +359,172 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  const reportDateRangePicker = document.getElementById('reportDateRangePicker');
+
+  if (reportDateRangePicker) {
+    const rangeTrigger = document.getElementById('reportDateRangeTrigger');
+    const rangePopover = document.getElementById('reportDateRangePopover');
+    const rangeInput = document.getElementById('reportDateRangeValue');
+    const rangeText = document.getElementById('reportDateRangeText');
+    const rangeMonth = document.getElementById('reportDateRangeMonth');
+    const rangeDays = document.getElementById('reportDateRangeDays');
+    const rangeSummary = document.getElementById('reportDateRangeSummary');
+    const rangeApply = rangePopover.querySelector('[data-calendar-apply]');
+    const displayDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const displayMonth = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
+
+    const parseIsoDate = (value) => {
+      const parts = value.split('-').map(Number);
+      return new Date(parts[0], parts[1] - 1, parts[2], 12);
+    };
+
+    const toIsoDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return year + '-' + month + '-' + day;
+    };
+
+    const displayRange = (start, end) => displayDate.format(parseIsoDate(start)) + ' – ' + displayDate.format(parseIsoDate(end));
+
+    let committedStart = reportDateRangePicker.dataset.start;
+    let committedEnd = reportDateRangePicker.dataset.end;
+    let pendingStart = committedStart;
+    let pendingEnd = committedEnd;
+    let viewDate = parseIsoDate(committedEnd);
+
+    function renderDateRangeCalendar() {
+      rangeMonth.textContent = displayMonth.format(viewDate);
+      rangeDays.replaceChildren();
+
+      const year = viewDate.getFullYear();
+      const month = viewDate.getMonth();
+      const firstWeekday = new Date(year, month, 1, 12).getDay();
+      const daysInMonth = new Date(year, month + 1, 0, 12).getDate();
+      const today = toIsoDate(new Date());
+
+      for (let blank = 0; blank < firstWeekday; blank++) {
+        const spacer = document.createElement('span');
+        spacer.className = 'date-range-blank';
+        spacer.setAttribute('aria-hidden', 'true');
+        rangeDays.appendChild(spacer);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day, 12);
+        const value = toIsoDate(date);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'date-range-day';
+        button.textContent = String(day);
+        button.dataset.date = value;
+        button.setAttribute('aria-label', displayDate.format(date));
+
+        if (value === today) button.classList.add('today');
+        if (value === pendingStart) button.classList.add('range-start');
+        if (value === pendingEnd) button.classList.add('range-end');
+        if (pendingStart && pendingEnd && value > pendingStart && value < pendingEnd) {
+          button.classList.add('in-range');
+        }
+
+        button.addEventListener('click', function () {
+          if (!pendingStart || pendingEnd) {
+            pendingStart = value;
+            pendingEnd = null;
+          } else if (value < pendingStart) {
+            pendingEnd = pendingStart;
+            pendingStart = value;
+          } else {
+            pendingEnd = value;
+          }
+
+          renderDateRangeCalendar();
+        });
+
+        rangeDays.appendChild(button);
+      }
+
+      if (pendingStart && pendingEnd) {
+        rangeSummary.textContent = displayRange(pendingStart, pendingEnd);
+      } else if (pendingStart) {
+        rangeSummary.textContent = 'Start: ' + displayDate.format(parseIsoDate(pendingStart)) + ' · Select an end date';
+      } else {
+        rangeSummary.textContent = 'Select a start date';
+      }
+
+      rangeApply.disabled = !(pendingStart && pendingEnd);
+    }
+
+    function openDateRangePicker() {
+      pendingStart = committedStart;
+      pendingEnd = committedEnd;
+
+      const today = toIsoDate(new Date());
+      viewDate = parseIsoDate(today >= committedStart && today <= committedEnd ? today : committedEnd);
+      rangePopover.hidden = false;
+      rangeTrigger.setAttribute('aria-expanded', 'true');
+      renderDateRangeCalendar();
+    }
+
+    function closeDateRangePicker(returnFocus) {
+      rangePopover.hidden = true;
+      rangeTrigger.setAttribute('aria-expanded', 'false');
+      if (returnFocus) rangeTrigger.focus();
+    }
+
+    rangeTrigger.addEventListener('click', function () {
+      if (rangePopover.hidden) {
+        openDateRangePicker();
+      } else {
+        closeDateRangePicker(false);
+      }
+    });
+
+    rangePopover.querySelector('[data-calendar-previous]').addEventListener('click', function () {
+      viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1, 12);
+      renderDateRangeCalendar();
+    });
+
+    rangePopover.querySelector('[data-calendar-next]').addEventListener('click', function () {
+      viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1, 12);
+      renderDateRangeCalendar();
+    });
+
+    rangePopover.querySelector('[data-calendar-cancel]').addEventListener('click', function () {
+      pendingStart = committedStart;
+      pendingEnd = committedEnd;
+      closeDateRangePicker(true);
+    });
+
+    rangeApply.addEventListener('click', function () {
+      if (!(pendingStart && pendingEnd)) return;
+
+      committedStart = pendingStart;
+      committedEnd = pendingEnd;
+      rangeInput.value = committedStart + ' to ' + committedEnd;
+      rangeText.textContent = displayRange(committedStart, committedEnd);
+      reportDateRangePicker.dataset.start = committedStart;
+      reportDateRangePicker.dataset.end = committedEnd;
+      closeDateRangePicker(true);
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!rangePopover.hidden && !event.composedPath().includes(reportDateRangePicker)) {
+        pendingStart = committedStart;
+        pendingEnd = committedEnd;
+        closeDateRangePicker(false);
+      }
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !rangePopover.hidden) {
+        pendingStart = committedStart;
+        pendingEnd = committedEnd;
+        closeDateRangePicker(true);
+      }
+    });
+  }
+
   const studentReportSearch = document.getElementById('studentReportSearch');
   const studentReportStatus = document.getElementById('studentReportStatus');
   const studentReportCount = document.getElementById('studentReportCount');

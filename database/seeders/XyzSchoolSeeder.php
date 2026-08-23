@@ -2,8 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Models\Food;
+use App\Models\GrowthMeasurement;
+use App\Models\Meal;
+use App\Models\MealItem;
+use App\Models\School;
+use App\Models\Student;
+use App\Models\User;
 use Illuminate\Database\Seeder;
-use App\Models\{School, User, Student, GrowthMeasurement, Meal, MealItem, Food};
 
 class XyzSchoolSeeder extends Seeder
 {
@@ -24,10 +30,10 @@ class XyzSchoolSeeder extends Seeder
         $aide = User::firstOrCreate(
             ['email' => 'xyz.aide@sample.com'],
             [
-                'name' => 'Nutrition Aide - XYZ',
+                'name' => 'School Admin - XYZ',
                 'username' => 'xyz.aide@sample.com',
                 'password' => 'aide1234',
-                'role' => 'aide',
+                'role' => User::ROLE_SCHOOL_ADMIN,
                 'school_id' => $school->id,
             ]
         );
@@ -45,7 +51,7 @@ class XyzSchoolSeeder extends Seeder
                 ['name' => $s['name'], 'birthdate' => $s['birthdate']],
                 $s + ['school_id' => $school->id]
             );
-            if (!$student->school_id) {
+            if (! $student->school_id) {
                 $student->school_id = $school->id;
                 $student->save();
             }
@@ -77,21 +83,21 @@ class XyzSchoolSeeder extends Seeder
 
         // Ensure foods exist
         $foods = [
-            Food::where('name','Vegetable Soup')->first(),
-            Food::where('name','Chicken Salad')->first(),
-            Food::where('name','Egg Sandwich')->first(),
-            Food::where('name','Fruit Salad')->first(),
-            Food::where('name','Milk')->first(),
+            Food::where('name', 'Vegetable Soup')->first(),
+            Food::where('name', 'Chicken Salad')->first(),
+            Food::where('name', 'Egg Sandwich')->first(),
+            Food::where('name', 'Fruit Salad')->first(),
+            Food::where('name', 'Milk')->first(),
         ];
         $foods = array_values(array_filter($foods));
         if (count($foods) === 0) {
-            (new FoodSeeder())->run();
+            (new FoodSeeder)->run();
             $foods = [
-                Food::where('name','Vegetable Soup')->first(),
-                Food::where('name','Chicken Salad')->first(),
-                Food::where('name','Egg Sandwich')->first(),
-                Food::where('name','Fruit Salad')->first(),
-                Food::where('name','Milk')->first(),
+                Food::where('name', 'Vegetable Soup')->first(),
+                Food::where('name', 'Chicken Salad')->first(),
+                Food::where('name', 'Egg Sandwich')->first(),
+                Food::where('name', 'Fruit Salad')->first(),
+                Food::where('name', 'Milk')->first(),
             ];
             $foods = array_values(array_filter($foods));
         }

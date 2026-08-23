@@ -2,9 +2,15 @@
 
 namespace Database\Seeders;
 
+use App\Models\Food;
+use App\Models\GrowthMeasurement;
+use App\Models\Meal;
+use App\Models\MealItem;
+use App\Models\School;
+use App\Models\Student;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
-use App\Models\{School, User, Student, GrowthMeasurement, Meal, MealItem, Food};
 
 class SampleSchoolSeeder extends Seeder
 {
@@ -12,10 +18,12 @@ class SampleSchoolSeeder extends Seeder
     {
         // Ensure foods
         if (Food::count() === 0) {
-            (new FoodSeeder())->run();
+            (new FoodSeeder)->run();
         }
-        $foods = Food::select('id','name','portion','kcal','protein_g')->get();
-        if ($foods->isEmpty()) return;
+        $foods = Food::select('id', 'name', 'portion', 'kcal', 'protein_g')->get();
+        if ($foods->isEmpty()) {
+            return;
+        }
 
         // Create Sample School
         $school = School::firstOrCreate(
@@ -33,28 +41,28 @@ class SampleSchoolSeeder extends Seeder
         $aide = User::firstOrCreate(
             ['email' => $email],
             [
-                'name' => 'Nutrition Aide - Sample School',
+                'name' => 'School Admin - Sample School',
                 'username' => $email,
                 'password' => 'aide1234',
-                'role' => 'aide',
+                'role' => User::ROLE_SCHOOL_ADMIN,
                 'school_id' => $school->id,
             ]
         );
 
         // Build realistic student roster
-        $sections = ['Blue','Red','Green','Yellow'];
-        $classes = ['Grade 3','Grade 4','Grade 5','Grade 6'];
-        $firstNamesM = ['Daniel','Ethan','Liam','Noah','Lucas','Jacob','Mason','Logan'];
-        $firstNamesF = ['Olivia','Emma','Ava','Sophia','Isabella','Mia','Charlotte','Amelia'];
-        $lastNames = ['Dela Cruz','Santos','Reyes','Garcia','Lopez','Ramos','Torres','Flores'];
+        $sections = ['Blue', 'Red', 'Green', 'Yellow'];
+        $classes = ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'];
+        $firstNamesM = ['Daniel', 'Ethan', 'Liam', 'Noah', 'Lucas', 'Jacob', 'Mason', 'Logan'];
+        $firstNamesF = ['Olivia', 'Emma', 'Ava', 'Sophia', 'Isabella', 'Mia', 'Charlotte', 'Amelia'];
+        $lastNames = ['Dela Cruz', 'Santos', 'Reyes', 'Garcia', 'Lopez', 'Ramos', 'Torres', 'Flores'];
 
         $students = [];
         $count = 12;
-        for ($i=0;$i<$count;$i++) {
-            $gender = (random_int(0,1)===1) ? 'Male' : 'Female';
-            $first = $gender==='Male' ? $firstNamesM[array_rand($firstNamesM)] : $firstNamesF[array_rand($firstNamesF)];
+        for ($i = 0; $i < $count; $i++) {
+            $gender = (random_int(0, 1) === 1) ? 'Male' : 'Female';
+            $first = $gender === 'Male' ? $firstNamesM[array_rand($firstNamesM)] : $firstNamesF[array_rand($firstNamesF)];
             $last = $lastNames[array_rand($lastNames)];
-            $birthdate = Carbon::today()->subYears(random_int(7,12))->subDays(random_int(0,364))->toDateString();
+            $birthdate = Carbon::today()->subYears(random_int(7, 12))->subDays(random_int(0, 364))->toDateString();
 
             $student = Student::firstOrCreate(
                 ['name' => $first.' '.$last, 'birthdate' => $birthdate],
@@ -70,7 +78,7 @@ class SampleSchoolSeeder extends Seeder
             // Growth measurement (latest)
             $height = random_int(120, 155);
             $weight = random_int(20, 45);
-            $bmi = round($weight / pow($height/100, 2), 2);
+            $bmi = round($weight / pow($height / 100, 2), 2);
             $flag = $bmi < 14 ? 'Underweight' : 'Normal';
             GrowthMeasurement::create([
                 'student_id' => $student->id,
@@ -85,10 +93,10 @@ class SampleSchoolSeeder extends Seeder
         // Meals for last 30 days: random attendance and kcal via items+quantity
         $foodIds = $foods->pluck('id')->all();
         foreach ($students as $st) {
-            for ($d=29; $d>=0; $d--) {
-                if (random_int(1,100) <= 70) { // 70% chance served
-                    $servedAt = Carbon::today()->subDays($d)->setTime(random_int(7,13), random_int(0,59));
-                    $types = ['Breakfast','Lunch','Snack'];
+            for ($d = 29; $d >= 0; $d--) {
+                if (random_int(1, 100) <= 70) { // 70% chance served
+                    $servedAt = Carbon::today()->subDays($d)->setTime(random_int(7, 13), random_int(0, 59));
+                    $types = ['Breakfast', 'Lunch', 'Snack'];
                     $meal = Meal::create([
                         'student_id' => $st->id,
                         'logged_by_user_id' => $aide->id,
@@ -96,7 +104,7 @@ class SampleSchoolSeeder extends Seeder
                         'served_at' => $servedAt,
                     ]);
                     shuffle($foodIds);
-                    $items = array_slice($foodIds, 0, random_int(1,3));
+                    $items = array_slice($foodIds, 0, random_int(1, 3));
                     foreach ($items as $fid) {
                         MealItem::create([
                             'meal_id' => $meal->id,

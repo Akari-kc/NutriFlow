@@ -19,7 +19,7 @@ The current prototype opens in a nutrition-aide workflow and includes seeded dem
 
 ## Main Features
 
-- Nutrition aide dashboard with student count, at-risk counts, meals served today, average calories, average protein, BMI trends, and suggested meal items.
+- Shared monitoring dashboard with student count, at-risk counts, meals served today, average calories, average protein, and BMI trends.
 - Student registry for Kinder through Grade 6, with grade and section organization.
 - Student profiles with birthdate, gender, allergies, growth measurements, meal history, BMI charts, and latest nutrition status.
 - BMI-for-age classification using child BMI thresholds for statuses such as Normal, Undernourished, Severely Undernourished, Overweight, Obese, Needs Review, and No Measurement.
@@ -27,8 +27,9 @@ The current prototype opens in a nutrition-aide workflow and includes seeded dem
 - Meal catalog for school-specific food and menu items, including nutrition fields and CSV import.
 - Feeding schedule management for planned or recurring school feeding activities.
 - Reports page with filters for school year, grade, section, date range, and nutrition status.
-- CSV export for nutrition monitoring reports, including student measurements, meals served, calories, and protein totals.
+- School Admin-only CSV/PDF export for nutrition monitoring reports, including student measurements and meals served.
 - Multi-school data scoping so users can work within their assigned school.
+- Server-enforced School Admin and Nutrition Aide role separation.
 - Settings area for theme and password management.
 
 ## Who Uses It
@@ -46,7 +47,7 @@ This repository contains a working prototype. It focuses on the core nutrition-a
 
 Implemented now:
 
-- Login and nutrition-aide session flow.
+- Session-based login with School Admin and Nutrition Aide roles.
 - Dashboard, students, meals, feeding schedules, meal catalog, reports, and settings pages.
 - Student measurement tracking with BMI calculation and classification.
 - Batch meal logging and per-student meal history.
@@ -56,8 +57,22 @@ Implemented now:
 Still planned or partial:
 
 - PDF export is currently rendered through a printable report view.
-- More advanced recommendations can be expanded beyond the current nutrition-profile heuristic.
-- Production deployment hardening, user roles, and real school onboarding would need additional review before live use.
+- Objective 4's constraint-aware predictive meal recommendation mechanism is not implemented in this RBAC update.
+- Objective 5's RA 11037 compliance functionality is not implemented in this RBAC update.
+- Production deployment hardening and real school onboarding require additional review before live use.
+
+## Role-Based Access
+
+School Admin retains administrative control over child profiles, grade sections, imports, report exports, meal catalog master data, destructive meal/schedule actions, and related settings. Nutrition Aide can view children, BMI results, dashboards, reports, schedules, and the meal catalog, and can record operational measurements, feeding sessions, and meal logs.
+
+Authorization is enforced by route middleware. Hiding buttons is only a usability layer; a restricted direct request receives HTTP 403. Operational writes are also scoped to the authenticated user's school.
+
+The RBAC migration converts legacy `aide` and `admin` accounts to `school_admin` without resetting passwords or deleting records. Run the focused seeder after migration to add the restricted demo aide:
+
+```powershell
+php artisan migrate
+php artisan db:seed --class=RbacUserSeeder
+```
 
 ## Run Locally
 
@@ -111,10 +126,15 @@ npm run build
 php artisan serve
 ```
 
-Demo login:
+Demo logins:
 
 ```text
+School Admin
 Email: aide@example.com
+Password: password
+
+Nutrition Aide
+Email: nutrition.aide@example.com
 Password: password
 ```
 

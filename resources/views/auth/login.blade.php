@@ -88,14 +88,22 @@
     }
 
     .brand-icon {
-      width: 46px;
-      height: 46px;
-      display: grid;
-      place-items: center;
-      border: 2px solid rgba(245, 180, 0, .55);
-      border-radius: 999px;
-      color: var(--nf-gold);
-      font-size: 22px;
+      position: relative;
+      width: 52px;
+      height: 52px;
+      flex: 0 0 52px;
+      overflow: hidden;
+      border-radius: 14px;
+      filter: drop-shadow(0 5px 10px rgba(0,0,0,.2));
+    }
+
+    .brand-logo-art {
+      position: absolute;
+      top: 2.5%;
+      left: -34.2%;
+      width: 168.3%;
+      height: auto;
+      max-width: none;
     }
 
     .brand-name {
@@ -335,7 +343,7 @@
       <aside class="brand-panel">
         <div class="brand-mark">
           <div class="brand-icon">
-            <svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V9"/><path d="M12 9c-4 0-6-2-6-6 4 0 6 2 6 6Z"/><path d="M12 12c4 0 6-2 6-6-4 0-6 2-6 6Z"/><path d="M7 21h10"/></svg>
+            <img class="brand-logo-art" src="{{ asset('assets/nutriflow-logo.svg') }}" alt="">
           </div>
           <div>
             <div class="brand-name">NutriFlow</div>
@@ -402,7 +410,7 @@
               <button class="signin-button" type="submit">Sign In</button>
             </form>
 
-            <div class="demo-note">Demo: use <strong>aide@example.com</strong> with password <strong>password</strong></div>
+            <div class="demo-note">School Admin: <strong>aide@example.com</strong> · Nutrition Aide: <strong>nutrition.aide@example.com</strong> · Password: <strong>password</strong></div>
           </div>
         </div>
 

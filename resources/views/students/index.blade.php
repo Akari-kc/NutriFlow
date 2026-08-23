@@ -84,7 +84,9 @@
     <h1 class="children-title">Children</h1>
     <div class="children-subtitle">{{ number_format($totalStudents ?? 0) }} students enrolled</div>
   </div>
-  <a href="{{ route('students.create') }}" class="btn btn-primary nl-btn add-child-btn">+ Add Child</a>
+  @if(auth()->user()?->isSchoolAdmin())
+    <a href="{{ route('students.create') }}" class="btn btn-primary nl-btn add-child-btn">+ Add Child</a>
+  @endif
 </div>
 
 <form method="GET" class="children-toolbar" id="childrenFilters">

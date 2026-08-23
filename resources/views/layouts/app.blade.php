@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>@yield('title', config('app.name', 'NutriFlow'))</title>
-  <link rel="icon" type="image/png" href="{{ asset('images/nutrilog_logo.png') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ asset('assets/nutriflow-logo.svg') }}">
   <meta name="theme-color" content="#7ec043">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,12 +28,22 @@
       --nf-bg: #f4f6fa;
       --nf-line: #e4e9f2;
       --nf-card: #ffffff;
+      --nf-surface: #ffffff;
+      --nf-surface-soft: #f7f9fc;
+      --nf-surface-raised: #fbfcfe;
+      --nf-control-bg: #ffffff;
+      --nf-control-border: #dbe3ef;
+      --nf-text-primary: #082858;
+      --nf-text-secondary: #526894;
+      --nf-text-muted: #7082a6;
+      --nf-link: #0b3b82;
+      --nf-accent-text: #c78200;
       --bs-primary: var(--nf-blue);
       --bs-success: #138a55;
       --bs-link-color: var(--nf-blue);
     }
     * { letter-spacing: 0; }
-    body { font-family: 'Inter', sans-serif; background: var(--nf-bg); color: #082858; }
+    body { font-family: 'Inter', sans-serif; background: var(--nf-bg); color: var(--nf-text-primary); }
     .app-shell { min-height: 100vh; display: flex; }
     .sidebar {
       position: sticky;
@@ -49,11 +59,21 @@
     }
     .brand-block { display: flex; align-items: center; gap: .7rem; padding: 1.2rem .55rem 1.6rem; }
     .brand-mark {
-      width: 38px; height: 38px; border-radius: 50%;
-      display: grid; place-items: center;
-      border: 2px solid rgba(255,183,3,.55);
-      color: var(--nf-amber);
-      font-size: 1.15rem;
+      position: relative;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      overflow: hidden;
+      border-radius: 12px;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,.18));
+    }
+    .brand-logo-art {
+      position: absolute;
+      top: 2.5%;
+      left: -34.2%;
+      width: 168.3%;
+      height: auto;
+      max-width: none;
     }
     .svg-icon { width: 1rem; height: 1rem; flex: 0 0 auto; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
     .svg-icon.solid { fill: currentColor; stroke: none; }
@@ -167,30 +187,117 @@
     }
   </style>
     <style>
-      /* Simple dark theme */
-      body.dark { background: #0f1214; color: #e8e8e8; }
-      body.dark .nl-card { background: #161b1f; color: #e8e8e8; }
-      body.dark .topbar { background: #161b1f; border-color: #2a2f34; }
-      body.dark .topbar-title, body.dark h1, body.dark h2, body.dark h3, body.dark h4, body.dark h5, body.dark h6 { color: #e8e8e8; }
-      body.dark a { color: #cfe8ff; }
-      /* Improve contrast for muted/helper texts */
-      body.dark .text-muted, body.dark .small.text-muted, body.dark .card .text-muted { color: #a8b3be !important; }
-      body.dark .form-text { color: #9aa5b1; }
-      body.dark .form-label { color: #cfd8e3; }
-      body.dark .table { color: #ddd; }
-      body.dark .table > :not(caption) > * > * { color: #ddd; background-color: transparent; }
-      body.dark .form-control, body.dark .form-select, body.dark .search-pill { background:#111418; color:#e8e8e8; border-color:#2a2f34; }
-      body.dark .form-control::placeholder { color:#9aa5b1; }
-      body.dark .nf-suggest-menu { background:#161b1f; border-color:#2a2f34; box-shadow: 0 12px 28px rgba(0,0,0,.28); }
-      body.dark .nf-suggest-option { color:#e8e8e8; }
-      body.dark .nf-suggest-option:hover, body.dark .nf-suggest-option:focus { background:#253041; }
-      body.dark .btn-outline-secondary { color:#cfe8ff; border-color:#425466; }
-      body.dark .btn-outline-primary { color:#9ecbff; border-color:#2b6cb0; }
-      body.dark .alert-success { background:#0f2a18; color:#9be7a6; border-color:#1b3a26; }
-      /* Badges and chips on dark background */
-      body.dark .badge.bg-light { background-color:#2a2f34 !important; color:#e8e8e8 !important; border:1px solid #3a4046; }
+      /* Shared dark-theme tokens and component treatments. */
+      body.dark {
+        --nf-bg: #0d1420;
+        --nf-line: #33445a;
+        --nf-card: #151f2d;
+        --nf-surface: #151f2d;
+        --nf-surface-soft: #1b2736;
+        --nf-surface-raised: #202d3e;
+        --nf-control-bg: #101923;
+        --nf-control-border: #3b4b60;
+        --nf-text-primary: #f4f7fb;
+        --nf-text-secondary: #d6dfeb;
+        --nf-text-muted: #a7b4c8;
+        --nf-link: #9ecbff;
+        --nf-accent-text: #ffd166;
+        color-scheme: dark;
+        background: var(--nf-bg);
+        color: var(--nf-text-primary);
+      }
+      body.dark .nl-card,
+      body.dark .card,
+      body.dark .modal-content { background: var(--nf-card); color: var(--nf-text-primary); border-color: var(--nf-line); }
+      body.dark .topbar { background: var(--nf-card); border-color: var(--nf-line); }
+      body.dark .topbar-title,
+      body.dark h1,
+      body.dark h2,
+      body.dark h3,
+      body.dark h4,
+      body.dark h5,
+      body.dark h6 { color: var(--nf-text-primary); }
+      body.dark a { color: var(--nf-link); }
+      body.dark .text-muted,
+      body.dark .small.text-muted,
+      body.dark .card .text-muted { color: var(--nf-text-muted) !important; }
+      body.dark .form-text { color: var(--nf-text-muted); }
+      body.dark .form-label { color: var(--nf-text-secondary); }
+      body.dark .table { color: var(--nf-text-secondary); border-color: var(--nf-line); }
+      body.dark .table > :not(caption) > * > * { color: var(--nf-text-secondary); background-color: transparent; border-color: var(--nf-line); }
+      body.dark .content-wrap :where(
+        .dash-hello h1, .metric-value, .panel-title, .risk-number,
+        .children-title, .student-cell, .grade-summary, .section-summary, .section-student,
+        .profile-title, .profile-name, .fact-value, .metric-value-profile, .bmi-summary-value,
+        .growth-entry-title, .growth-source-table td, .create-title, .edit-title, .section-label,
+        .meals-title, .meal-student, .schedule-title, .nav-range, .session-name,
+        .student-picker-name, .menu-picker-row, .reports-page, .reports-title,
+        .legend-count, .report-name, .import-title
+      ) { color: var(--nf-text-primary); }
+      body.dark .content-wrap :where(
+        .dash-hello p, .metric-label, .metric-sub, .panel-subtitle,
+        .children-subtitle, .table-footer, .student-meta, .profile-crumb, .fact-label,
+        .metric-label-profile, .bmi-summary-label, .growth-entry-copy, .growth-source-table th,
+        .create-subtitle, .edit-subtitle, .helper-copy, .meals-subtitle, .meal-meta, .meal-footer,
+        .schedule-subtitle, .day-divider, .session-count, .session-grade, .session-meta, .student-picker-meta,
+        .student-picker-count, .reports-subtitle, .filter-label, .filter-chip, .metric-title,
+        .metric-note, .legend-row, .legend-percent, .chart-legend, .student-result-count,
+        .report-table td, .import-subtitle, .import-step, .template-table td, .template-table th,
+        .schedule-empty
+      ) { color: var(--nf-text-muted); }
+      body.dark .content-wrap :where(
+        .schedule-item, .schedule-empty, .grade-card, .session-card, .growth-entry-card,
+        .last-meal-box, .student-picker-list, .menu-picker-list
+      ) { background: var(--nf-surface-soft); border-color: var(--nf-line); }
+      body.dark .content-wrap :where(
+        .mode-tabs, .bmi-period-tabs, .range-switch, .view-pill, .back-square, .icon-button,
+        .count-chip, .meal-type-pill, .food-chip, .column-chip
+      ) { background: var(--nf-surface-raised); color: var(--nf-text-secondary); border-color: var(--nf-line); }
+      body.dark .content-wrap :where(.mode-tab.active, .bmi-period-tabs a.active, .range-switch a.active) {
+        background: var(--nf-control-bg);
+        color: var(--nf-accent-text);
+      }
+      body.dark .content-wrap :where(.schedule-date-label, .slot-icon, .link-action.warn) { color: var(--nf-accent-text); }
+      body.dark .content-wrap :where(.link-action, .mini-pagination a, .mini-pagination span) { color: var(--nf-link); }
+      body.dark .content-wrap :where(
+        .form-control, .form-select, .search-pill, .student-search, .children-select,
+        .add-section-input, .schedule-search, .schedule-select, .filter-control, .icon-btn
+      ) { background: var(--nf-control-bg); color: var(--nf-text-primary); border-color: var(--nf-control-border); }
+      body.dark :where(input, textarea)::placeholder { color: var(--nf-text-muted); opacity: 1; }
+      body.dark :where(select, option) { background-color: var(--nf-control-bg); color: var(--nf-text-primary); }
+      body.dark .content-wrap :where(
+        .children-table thead th, .meal-table thead th, .growth-source-table thead th, .report-table th
+      ) { background-color: var(--nf-surface-raised) !important; color: var(--nf-text-secondary); border-color: var(--nf-line); }
+      body.dark .content-wrap .report-table td { border-color: var(--nf-line); }
+      body.dark .content-wrap :where(.section-stack, .section-student, .student-picker-row, .menu-picker-row, .student-table-scroll, .growth-table-scroll) {
+        border-color: var(--nf-line);
+      }
+      body.dark .content-wrap .section-student:hover { background: var(--nf-surface-raised); }
+      body.dark .content-wrap :where(.risk-severe, .profile-metric.bmi-risk, .allergy-row, .allergy-notice, .result-box.blocked) {
+        background: #341f27;
+        border-color: #7f4550;
+      }
+      body.dark .content-wrap .risk-moderate { background: #342a18; border-color: #7d6223; }
+      body.dark .content-wrap .risk-severe { --risk-alert-accent: #ff8a94; }
+      body.dark .content-wrap .risk-moderate { --risk-alert-accent: #ffd166; }
+      body.dark .content-wrap .risk-card :where(.risk-dot, .risk-label) { color: var(--risk-alert-accent); }
+      body.dark .content-wrap .risk-card .risk-dot { background-color: var(--risk-alert-accent) !important; }
+      body.dark .content-wrap .result-box.success { background: #153526; border-color: #2f6b4e; }
+      body.dark .modal-header,
+      body.dark .modal-footer { border-color: var(--nf-line); }
+      body.dark .modal-header .btn-close { filter: invert(1) grayscale(1); }
+      body.dark .btn-light { background: var(--nf-surface-raised); color: var(--nf-text-primary); border-color: var(--nf-line); }
+      body.dark .btn-outline-secondary { color: var(--nf-link); border-color: #60738b; }
+      body.dark .btn-outline-primary { color: var(--nf-link); border-color: #4d83bc; }
+      body.dark .alert-success { background:#153526; color:#a9e8bd; border-color:#2f6b4e; }
+      body.dark .nf-suggest-menu { background:var(--nf-card); border-color:var(--nf-line); box-shadow:0 12px 28px rgba(0,0,0,.28); }
+      body.dark .nf-suggest-option { color:var(--nf-text-primary); }
+      body.dark .nf-suggest-option:hover,
+      body.dark .nf-suggest-option:focus { background:var(--nf-surface-raised); }
+      body.dark .badge.bg-light { background-color:var(--nf-surface-raised) !important; color:var(--nf-text-primary) !important; border:1px solid var(--nf-line); }
       body.dark .badge.bg-warning.text-dark { color:#1a1a1a !important; }
-      body.dark code { color:#ffd479; }
+      body.dark code { color:var(--nf-accent-text); }
+      body.dark hr { border-color: var(--nf-line); opacity: 1; }
     </style>
 </head>
 <body class="{{ session('dark_mode') ? 'dark' : '' }}">
@@ -198,7 +305,7 @@
   <aside class="sidebar">
     <div class="brand-block">
       <div class="brand-mark">
-        <svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V9"/><path d="M12 9c-4 0-6-2-6-6 4 0 6 2 6 6Z"/><path d="M12 12c4 0 6-2 6-6-4 0-6 2-6 6Z"/><path d="M7 21h10"/></svg>
+        <img class="brand-logo-art" src="{{ asset('assets/nutriflow-logo.svg') }}" alt="">
       </div>
       <div>
         <div class="brand-title">NutriFlow</div>
@@ -220,11 +327,11 @@
           <div class="avatar">{{ collect(explode(' ', auth()->user()->name))->map(fn($p) => strtoupper(substr($p, 0, 1)))->take(2)->implode('') }}</div>
           <div class="user-copy">
             <div class="fw-bold small text-truncate">{{ auth()->user()->name }}</div>
-            <div class="small text-muted">Nutrition Aide</div>
+            <div class="small text-muted">{{ auth()->user()->roleLabel() }}</div>
           </div>
-          <form method="POST" action="{{ route('logout') }}" class="logout-form">
+          <form method="POST" action="{{ route('logout') }}" class="logout-form" id="logoutForm">
             @csrf
-            <button class="btn btn-link text-muted p-0" title="Logout"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M21 3v18"/></svg></button>
+            <button type="button" class="btn btn-link text-muted p-0" title="Log out" aria-label="Open logout confirmation" data-bs-toggle="modal" data-bs-target="#logoutConfirmationModal"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M21 3v18"/></svg></button>
           </form>
         </div>
       @endauth
@@ -266,6 +373,25 @@
     </div>
   </main>
 </div>
+@auth
+  <div class="modal fade" id="logoutConfirmationModal" tabindex="-1" aria-labelledby="logoutConfirmationTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="logoutConfirmationTitle">Log out of NutriFlow?</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          Are you sure you want to log out? You will need to sign in again to continue.
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary nl-btn" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger nl-btn" form="logoutForm">Log out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+@endauth
 @stack('modals')
 @stack('scripts')
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

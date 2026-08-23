@@ -2,11 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Models\Food;
+use App\Models\GrowthMeasurement;
+use App\Models\Meal;
+use App\Models\MealItem;
+use App\Models\School;
+use App\Models\Student;
+use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Carbon;
-use App\Models\{School, User, Student, GrowthMeasurement, Meal, MealItem, Food};
 
 class JruSchoolSeeder extends Seeder
 {
@@ -27,10 +30,10 @@ class JruSchoolSeeder extends Seeder
         $aide = User::firstOrCreate(
             ['email' => 'JRU@sample.com'],
             [
-                'name' => 'Nutrition Aide - JRU',
+                'name' => 'School Admin - JRU',
                 'username' => 'JRU@sample.com',
                 'password' => 'aide1234', // hashed via model cast
-                'role' => 'aide',
+                'role' => User::ROLE_SCHOOL_ADMIN,
                 'school_id' => $school->id,
             ]
         );
@@ -48,7 +51,7 @@ class JruSchoolSeeder extends Seeder
                 ['name' => $s['name'], 'birthdate' => $s['birthdate']],
                 $s + ['school_id' => $school->id]
             );
-            if (!$student->school_id) {
+            if (! $student->school_id) {
                 $student->school_id = $school->id;
                 $student->save();
             }
@@ -83,32 +86,32 @@ class JruSchoolSeeder extends Seeder
 
         // 5) Ensure foods exist and collect them
         $foods = [
-            Food::where('name','Vegetable Soup')->first(),
-            Food::where('name','Chicken Salad')->first(),
-            Food::where('name','Egg Sandwich')->first(),
-            Food::where('name','Fruit Salad')->first(),
-            Food::where('name','Milk')->first(),
+            Food::where('name', 'Vegetable Soup')->first(),
+            Food::where('name', 'Chicken Salad')->first(),
+            Food::where('name', 'Egg Sandwich')->first(),
+            Food::where('name', 'Fruit Salad')->first(),
+            Food::where('name', 'Milk')->first(),
         ];
         $foods = array_values(array_filter($foods));
         if (count($foods) === 0) {
             // Fallback: ensure foods are present by running FoodSeeder logic
-            (new FoodSeeder())->run();
+            (new FoodSeeder)->run();
             $foods = [
-                Food::where('name','Vegetable Soup')->first(),
-                Food::where('name','Chicken Salad')->first(),
-                Food::where('name','Egg Sandwich')->first(),
-                Food::where('name','Fruit Salad')->first(),
-                Food::where('name','Milk')->first(),
+                Food::where('name', 'Vegetable Soup')->first(),
+                Food::where('name', 'Chicken Salad')->first(),
+                Food::where('name', 'Egg Sandwich')->first(),
+                Food::where('name', 'Fruit Salad')->first(),
+                Food::where('name', 'Milk')->first(),
             ];
             $foods = array_values(array_filter($foods));
         }
         // 6) Create meals for the last 21 days with randomness for realistic intake
-        $foodIds = array_map(fn($f)=>$f->id, $foods);
+        $foodIds = array_map(fn ($f) => $f->id, $foods);
         foreach ($students as $s) {
-            for ($d=20; $d>=0; $d--) {
-                if (random_int(1,100) <= 75) { // 75% attendance
-                    $servedAt = now()->subDays($d)->setTime(random_int(7,13), random_int(0,59));
-                    $types = ['Breakfast','Lunch','Snack'];
+            for ($d = 20; $d >= 0; $d--) {
+                if (random_int(1, 100) <= 75) { // 75% attendance
+                    $servedAt = now()->subDays($d)->setTime(random_int(7, 13), random_int(0, 59));
+                    $types = ['Breakfast', 'Lunch', 'Snack'];
                     $meal = Meal::create([
                         'student_id' => $s->id,
                         'logged_by_user_id' => $aide->id,
@@ -116,7 +119,7 @@ class JruSchoolSeeder extends Seeder
                         'served_at' => $servedAt,
                     ]);
                     shuffle($foodIds);
-                    $items = array_slice($foodIds, 0, random_int(1,3));
+                    $items = array_slice($foodIds, 0, random_int(1, 3));
                     foreach ($items as $fid) {
                         MealItem::create([
                             'meal_id' => $meal->id,
