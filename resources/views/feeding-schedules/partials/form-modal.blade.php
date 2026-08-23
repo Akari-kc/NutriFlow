@@ -7,12 +7,15 @@
   $selectedFoodIds = collect(old('selected_food_ids', $isEdit ? ($session->selected_food_ids ?? []) : []))
       ->map(fn($id) => (int) $id)
       ->all();
+  $formContext = $isEdit ? 'edit:'.$session->id : 'add';
+  $showFormErrors = $errors->any() && old('_schedule_form_mode') === $formContext;
 @endphp
 <div class="modal fade schedule-modal" id="{{ $modalId }}" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
-      <form method="POST" action="{{ $action }}">
+      <form method="POST" action="{{ $action }}" data-schedule-form>
         @csrf
+        <input type="hidden" name="_schedule_form_mode" value="{{ $formContext }}">
         @if($method !== 'POST')
           @method($method)
         @endif
@@ -21,6 +24,17 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
+          @if($showFormErrors)
+            <div class="alert alert-danger" role="alert">
+              <div class="fw-bold">Please correct the following:</div>
+              <ul class="mb-0 mt-1">
+                @foreach($errors->all() as $error)
+                  <li>{{ $error }}</li>
+                @endforeach
+              </ul>
+            </div>
+          @endif
+          <div class="alert alert-danger" role="alert" data-schedule-client-errors hidden></div>
           <div class="schedule-modal-grid">
             <div class="full">
               <label class="form-label">Session Name</label>
@@ -44,7 +58,7 @@
             </div>
             <div>
               <label class="form-label">Date</label>
-              <input type="date" name="session_date" value="{{ $isEdit ? $session->session_date->format('Y-m-d') : now('Asia/Manila')->toDateString() }}" class="form-control" required>
+              <input type="date" name="session_date" value="{{ old('session_date', $isEdit ? $session->session_date->format('Y-m-d') : now('Asia/Manila')->toDateString()) }}" class="form-control" required>
             </div>
             <div>
               <label class="form-label">Assigned Aide</label>
@@ -52,11 +66,11 @@
             </div>
             <div>
               <label class="form-label">Start Time</label>
-              <input type="time" name="start_time" value="{{ $isEdit ? \Carbon\Carbon::parse($session->start_time)->format('H:i') : '07:00' }}" class="form-control" required>
+              <input type="time" name="start_time" value="{{ old('start_time', $isEdit ? \Carbon\Carbon::parse($session->start_time)->format('H:i') : '07:00') }}" class="form-control" required>
             </div>
             <div>
               <label class="form-label">End Time</label>
-              <input type="time" name="end_time" value="{{ $isEdit ? \Carbon\Carbon::parse($session->end_time)->format('H:i') : '07:30' }}" class="form-control" required>
+              <input type="time" name="end_time" value="{{ old('end_time', $isEdit ? \Carbon\Carbon::parse($session->end_time)->format('H:i') : '07:30') }}" class="form-control" required>
             </div>
             <div class="full" data-student-picker>
               <label class="form-label">Participating Students</label>
@@ -75,6 +89,11 @@
                   @endforeach
                 </select>
               </div>
+              <div class="student-picker-actions">
+                <button type="button" class="btn btn-outline-primary btn-sm nl-btn" data-select-all-students>Select all</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm nl-btn" data-clear-students>Clear selection</button>
+                <span class="small text-muted">Select all applies to the students matching the current filters.</span>
+              </div>
               <div class="student-picker-list">
                 @foreach($students as $student)
                   <label class="student-picker-row" data-student-row data-name="{{ Str::lower($student->name) }}" data-grade="{{ $student->class_name }}" data-section="{{ $student->section }}" data-allergies="{{ $student->allergies }}">
@@ -88,6 +107,7 @@
               </div>
               <div class="student-picker-count" data-student-count>0 students selected</div>
             </div>
+            @include('feeding-schedules.partials.cohort-recommendations')
             <div class="full">
               <label class="form-label">Menu Items</label>
               <div class="menu-picker-list">
@@ -113,6 +133,11 @@
             <span></span>
           @endif
           <div class="d-flex gap-2">
+            @if($isEdit && ($session->meals_count ?? 0) > 0)
+              <span class="btn btn-light nl-btn disabled" aria-disabled="true">Meal Log Recorded</span>
+            @elseif($isEdit && $session->status !== 'Cancelled' && !$session->session_date->isFuture())
+              <a href="{{ route('meals.batch', ['feeding_schedule_id' => $session->id]) }}" class="btn btn-success nl-btn">Log This Session</a>
+            @endif
             <button type="button" class="btn btn-outline-secondary nl-btn" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-primary nl-btn">{{ $isEdit ? 'Save Changes' : 'Add Session' }}</button>
           </div>
@@ -143,6 +168,10 @@
     const foodRows = Array.from(modal.querySelectorAll('[data-food-row]'));
     const count = picker.querySelector('[data-student-count]');
     const allergyWarning = modal.querySelector('[data-allergy-warning]');
+    const form = modal.querySelector('[data-schedule-form]');
+    const clientErrors = modal.querySelector('[data-schedule-client-errors]');
+    const selectAll = picker.querySelector('[data-select-all-students]');
+    const clearStudents = picker.querySelector('[data-clear-students]');
     const sectionOptions = Array.from(section.options);
 
     function updateCount() {
@@ -240,9 +269,48 @@
       filterRows();
     }
 
+    function setVisibleSelection(checked) {
+      rows.filter((row) => !row.hidden).forEach((row) => {
+        const input = row.querySelector('input[type="checkbox"]');
+        if (input.checked === checked) return;
+        input.checked = checked;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      updateCount();
+    }
+
+    form?.addEventListener('submit', function (event) {
+      const messages = [];
+      if (!rows.some((row) => row.querySelector('input[type="checkbox"]').checked)) {
+        messages.push('Select at least one participating student.');
+      }
+      if (!foodRows.some((row) => row.querySelector('input[type="checkbox"]').checked)) {
+        messages.push('Select at least one menu item before adding the session.');
+      }
+      if (!messages.length || !clientErrors) return;
+
+      event.preventDefault();
+      clientErrors.replaceChildren();
+      const title = document.createElement('div');
+      title.className = 'fw-bold';
+      title.textContent = 'The feeding session was not added.';
+      const list = document.createElement('ul');
+      list.className = 'mb-0 mt-1';
+      messages.forEach((message) => {
+        const item = document.createElement('li');
+        item.textContent = message;
+        list.appendChild(item);
+      });
+      clientErrors.append(title, list);
+      clientErrors.hidden = false;
+      clientErrors.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
     search.addEventListener('input', filterRows);
     grade.addEventListener('change', syncSectionOptions);
     section.addEventListener('change', filterRows);
+    selectAll?.addEventListener('click', () => setVisibleSelection(true));
+    clearStudents?.addEventListener('click', () => setVisibleSelection(false));
     rows.forEach((row) => row.querySelector('input[type="checkbox"]').addEventListener('change', updateCount));
     foodRows.forEach((row) => row.querySelector('input[type="checkbox"]').addEventListener('change', updateAllergyWarning));
     modal.addEventListener('shown.bs.modal', function () {

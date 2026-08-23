@@ -11,7 +11,7 @@ class Meal extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['student_id','logged_by_user_id','feeding_schedule_id','meal_type','served_at'];
+    protected $fillable = ['student_id', 'logged_by_user_id', 'feeding_schedule_id', 'meal_type', 'served_at'];
 
     protected $casts = [
         'served_at' => 'datetime',
@@ -25,5 +25,10 @@ class Meal extends Model
     public function items(): HasMany
     {
         return $this->hasMany(MealItem::class);
+    }
+
+    public function feedingSchedule(): BelongsTo
+    {
+        return $this->belongsTo(FeedingSchedule::class);
     }
 }

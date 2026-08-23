@@ -2,19 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FeedingSchedule;
+use App\Models\Food;
 use App\Models\Meal;
+use App\Models\MealItem;
 use App\Models\Student;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class MealController extends Controller
 {
     public function index()
     {
         $this->ensureMealScheduleColumn();
-        $query = Meal::with(['student', 'items.food']);
+        $query = Meal::with(['student', 'items.food', 'feedingSchedule']);
         $user = auth()->user();
         $schoolId = $user?->school_id;
         if ($user && $user->school_id) {
@@ -22,8 +27,6 @@ class MealController extends Controller
                 $q->where('school_id', $user->school_id);
             });
         }
-        $query->whereNotNull('feeding_schedule_id');
-
         $filters = [
             'date_from' => request('date_from'),
             'date_to' => request('date_to'),
@@ -80,9 +83,10 @@ class MealController extends Controller
 
     public function batch()
     {
+        $this->ensureMealScheduleColumn();
         $user = auth()->user();
-        $studentsQ = \App\Models\Student::query();
-        $foodsQ = \App\Models\Food::query();
+        $studentsQ = Student::query();
+        $foodsQ = Food::query();
         if ($user && $user->school_id) {
             $studentsQ->where('school_id', $user->school_id);
             $foodsQ->where('school_id', $user->school_id);
@@ -103,16 +107,48 @@ class MealController extends Controller
         }
 
         // Distinct lists for filters (scoped)
-        $classes = \App\Models\Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
+        $classes = Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
             ->select('class_name')->distinct()->pluck('class_name')->filter()->values();
-        $sections = \App\Models\Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
+        $sections = Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
             ->select('section')->distinct()->pluck('section')->filter()->values();
         $gradeSections = $this->gradeSections($user?->school_id);
-        $studentSuggestions = \App\Models\Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
+        $studentSuggestions = Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
             ->orderBy('name')
             ->pluck('name')
             ->unique()
             ->values();
+        $studentAssessmentData = Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
+            ->orderBy('name')
+            ->get(['id', 'name', 'allergies'])
+            ->mapWithKeys(fn (Student $student) => [(string) $student->id => [
+                'name' => $student->name,
+                'allergies' => $student->allergies,
+            ]]);
+        $schedules = FeedingSchedule::query()
+            ->when($user?->school_id, fn ($q) => $q->where('school_id', $user->school_id))
+            ->where('status', '!=', 'Cancelled')
+            ->where(function ($query) {
+                $query
+                    ->whereDate('session_date', '>=', now('Asia/Manila')->toDateString())
+                    ->orWhereDoesntHave('meals');
+            })
+            ->withCount('meals')
+            ->orderByDesc('session_date')
+            ->orderByDesc('start_time')
+            ->get();
+        $scheduleData = $schedules->mapWithKeys(function (FeedingSchedule $schedule) {
+            $servedAt = Carbon::parse(
+                $schedule->session_date->format('Y-m-d').' '.$schedule->start_time,
+                'Asia/Manila'
+            );
+
+            return [(string) $schedule->id => [
+                'participant_ids' => collect($schedule->participant_student_ids)->map(fn ($id) => (int) $id)->values(),
+                'food_ids' => collect($schedule->selected_food_ids)->map(fn ($id) => (int) $id)->values(),
+                'meal_type' => $schedule->meal_type,
+                'served_at' => $servedAt->format('Y-m-d\\TH:i'),
+            ]];
+        });
 
         return view('meals.batch', [
             'students' => $studentsQ->orderBy('name')->paginate(30)->withQueryString(),
@@ -122,12 +158,17 @@ class MealController extends Controller
             'gradeSections' => $gradeSections,
             'search' => $search,
             'studentSuggestions' => $studentSuggestions,
+            'studentAssessmentData' => $studentAssessmentData,
+            'schedules' => $schedules,
+            'scheduleData' => $scheduleData,
+            'nutritionPlanEnabled' => (bool) config('nutriflow_ml.enabled'),
         ]);
     }
 
     public function batchStore(Request $request)
     {
         $data = $request->validate([
+            'feeding_schedule_id' => 'nullable|integer|exists:feeding_schedules,id',
             'meal_type' => 'required|in:Breakfast,Lunch,Snack,Dinner',
             'served_at' => 'required|date|before_or_equal:now',
             'served_students' => 'array',
@@ -144,10 +185,37 @@ class MealController extends Controller
         }
 
         $schoolId = auth()->user()?->school_id;
+        $schedule = null;
+        if (! empty($data['feeding_schedule_id'])) {
+            $schedule = FeedingSchedule::findOrFail($data['feeding_schedule_id']);
+            abort_if($schoolId && $schedule->school_id !== $schoolId, 403);
+
+            if ($schedule->status === 'Cancelled') {
+                throw ValidationException::withMessages([
+                    'feeding_schedule_id' => 'A cancelled feeding session cannot be logged.',
+                ]);
+            }
+            if ($schedule->session_date->isFuture()) {
+                throw ValidationException::withMessages([
+                    'feeding_schedule_id' => 'A future feeding session cannot be logged yet.',
+                ]);
+            }
+            if (Meal::where('feeding_schedule_id', $schedule->id)->exists()) {
+                throw ValidationException::withMessages([
+                    'feeding_schedule_id' => 'This feeding session already has a meal log.',
+                ]);
+            }
+
+            $scheduledStudentIds = collect($schedule->participant_student_ids)
+                ->map(fn ($id) => (int) $id)
+                ->unique();
+            abort_unless(collect($servedIds)->every(fn ($id) => $scheduledStudentIds->contains((int) $id)), 403);
+        }
+
         if ($schoolId) {
             $studentCount = Student::where('school_id', $schoolId)->whereIn('id', $servedIds)->count();
             $foodIds = collect($data['items'])->pluck('food_id')->unique()->values();
-            $foodCount = \App\Models\Food::where('school_id', $schoolId)->whereIn('id', $foodIds)->count();
+            $foodCount = Food::where('school_id', $schoolId)->whereIn('id', $foodIds)->count();
 
             abort_unless($studentCount === count($servedIds) && $foodCount === $foodIds->count(), 403);
         }
@@ -155,16 +223,23 @@ class MealController extends Controller
         // Parse served_at in Manila timezone
         $servedAt = \Illuminate\Support\Carbon::parse($data['served_at'], 'Asia/Manila');
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($data, $servedIds, $userId, $servedAt) {
+        DB::transaction(function () use ($data, $servedIds, $userId, $servedAt, $schedule) {
+            if ($schedule && Meal::where('feeding_schedule_id', $schedule->id)->exists()) {
+                throw ValidationException::withMessages([
+                    'feeding_schedule_id' => 'This feeding session already has a meal log.',
+                ]);
+            }
+
             foreach ($servedIds as $sid) {
-                $meal = \App\Models\Meal::create([
+                $meal = Meal::create([
                     'student_id' => $sid,
                     'logged_by_user_id' => $userId,
+                    'feeding_schedule_id' => $schedule?->id,
                     'meal_type' => $data['meal_type'],
                     'served_at' => $servedAt,
                 ]);
                 foreach ($data['items'] as $it) {
-                    \App\Models\MealItem::create([
+                    MealItem::create([
                         'meal_id' => $meal->id,
                         'food_id' => $it['food_id'],
                         'quantity' => (int) $it['quantity'],
@@ -172,9 +247,14 @@ class MealController extends Controller
                     ]);
                 }
             }
+
+            $schedule?->update(['status' => 'Completed']);
         });
 
-        return redirect()->route('meals.index')->with('status', 'Batch meals logged successfully');
+        return redirect()->route('meals.index')->with(
+            'status',
+            $schedule ? 'Scheduled feeding session logged successfully.' : 'Ad hoc meals logged successfully.'
+        );
     }
 
     public function destroy(Meal $meal)

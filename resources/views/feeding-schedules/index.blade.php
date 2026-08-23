@@ -65,6 +65,7 @@
   .schedule-modal .modal-header, .schedule-modal .modal-footer { flex:0 0 auto; }
   .schedule-modal .modal-body { flex:1 1 auto; min-height:0; overflow-y:auto; padding-bottom:1.25rem; }
   .student-picker-toolbar { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:.55rem; margin-bottom:.65rem; }
+  .student-picker-actions { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; margin-bottom:.55rem; }
   .student-picker-list { border:1px solid #dbe3ef; border-radius:10px; max-height:180px; overflow:auto; background:#fff; }
   .student-picker-row { display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding:.65rem .75rem; border-bottom:1px solid #eef2f7; }
   .student-picker-row:last-child { border-bottom:0; }
@@ -74,8 +75,39 @@
   .menu-picker-list { border:1px solid #dbe3ef; border-radius:10px; max-height:145px; overflow:auto; background:#fff; }
   .menu-picker-row { display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding:.62rem .75rem; border-bottom:1px solid #eef2f7; color:#082858; font-weight:800; }
   .menu-picker-row:last-child { border-bottom:0; }
+  .cohort-recommendation-panel { border:1px solid #cad9ec; background:#f8fbff; border-radius:12px; padding:1rem; }
+  .cohort-recommendation-head { display:flex; justify-content:space-between; align-items:flex-start; gap:.75rem; flex-wrap:wrap; }
+  .cohort-recommendation-title { color:#082858; font-weight:900; font-size:.95rem; }
+  .cohort-recommendation-copy { color:#657795; font-size:.78rem; margin-top:.25rem; max-width:620px; }
+  .cohort-prototype-badge { border:1px solid #e3b341; background:#fff8df; color:#8b6100; border-radius:999px; padding:.2rem .55rem; font-size:.68rem; font-weight:900; }
+  .cohort-recommendation-state { margin-top:.8rem; border:1px dashed #c8d5e6; border-radius:9px; padding:.7rem; color:#526894; font-size:.8rem; }
+  .cohort-recommendation-state.error { border-style:solid; border-color:#efbbb3; background:#fff5f4; color:#a83a2a; }
+  .cohort-summary-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.5rem; margin-top:.85rem; }
+  .cohort-summary-item { border:1px solid #dce5f0; border-radius:9px; background:#fff; padding:.65rem; }
+  .cohort-summary-label { color:#7688ad; font-size:.68rem; }
+  .cohort-summary-value { color:#082858; font-size:1rem; font-weight:900; margin-top:.15rem; }
+  .cohort-section-label { color:#082858; font-size:.8rem; font-weight:900; margin-bottom:.45rem; }
+  .cohort-priority-list { display:flex; flex-wrap:wrap; gap:.4rem; }
+  .cohort-priority-chip { background:#edf3fb; color:#31527c; border-radius:7px; padding:.3rem .5rem; font-size:.72rem; font-weight:800; }
+  .cohort-meal-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem; }
+  .cohort-meal-card { border:1px solid #dce5f0; border-radius:10px; background:#fff; padding:.75rem; }
+  .cohort-meal-name { color:#082858; font-weight:900; }
+  .cohort-meal-meta { color:#687b9a; font-size:.72rem; margin:.25rem 0 .55rem; }
+  .cohort-match { display:inline-block; background:#e8f6ef; color:#0b6b47; border-radius:999px; padding:.18rem .45rem; font-size:.67rem; font-weight:900; }
+  .cohort-check-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.35rem .8rem; }
+  .cohort-check { display:flex; justify-content:space-between; gap:.5rem; border-bottom:1px solid #e4eaf2; padding:.35rem 0; font-size:.72rem; }
+  .cohort-check strong { text-align:right; }
+  .cohort-prototype-notice { border-left:3px solid #e0a21c; background:#fff9ea; color:#6f5a25; padding:.55rem .7rem; font-size:.72rem; }
+  .cohort-budget { border-top:1px solid #dbe4f0; padding-top:.85rem; }
+  .cohort-budget-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.55rem; }
+  .cohort-budget-result { min-height:31px; display:flex; align-items:center; border:1px solid #dbe3ef; border-radius:7px; background:#fff; padding:.35rem .55rem; color:#526894; font-size:.75rem; font-weight:800; }
+  body.dark .cohort-recommendation-panel { background:var(--nf-surface-raised); border-color:var(--nf-line); }
+  body.dark .cohort-recommendation-panel :where(.cohort-summary-item,.cohort-meal-card,.cohort-budget-result) { background:var(--nf-control-bg); border-color:var(--nf-line); }
+  body.dark .cohort-prototype-badge, body.dark .cohort-prototype-notice { background:#342a18; color:#ffd166; border-color:#7d6223; }
+  body.dark .cohort-priority-chip { background:#1c3048; color:#b9d7f7; }
   @media (max-width:1180px){ .session-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .schedule-toolbar{grid-template-columns:1fr;} .schedule-filters{justify-content:flex-start; flex-wrap:wrap;} }
-  @media (max-width:720px){ .schedule-head{display:block;} .schedule-head .btn{width:100%; margin-top:.8rem;} .session-grid{grid-template-columns:1fr;} .schedule-modal-grid{grid-template-columns:1fr;} .schedule-modal-grid .full{grid-column:auto;} .student-picker-toolbar{grid-template-columns:1fr;} }
+  @media (max-width:900px){ .cohort-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .cohort-budget-grid{grid-template-columns:1fr;} }
+  @media (max-width:720px){ .schedule-head{display:block;} .schedule-head .btn{width:100%; margin-top:.8rem;} .session-grid,.cohort-meal-grid,.cohort-check-list,.cohort-summary-grid{grid-template-columns:1fr;} .schedule-modal-grid{grid-template-columns:1fr;} .schedule-modal-grid .full{grid-column:auto;} .student-picker-toolbar{grid-template-columns:1fr;} }
 </style>
 
 <div class="schedule-head">
@@ -88,6 +120,17 @@
     Add Session
   </button>
 </div>
+
+@if($errors->any())
+  <div class="alert alert-danger" role="alert">
+    <div class="fw-bold">The feeding session was not added.</div>
+    <ul class="mb-0 mt-1">
+      @foreach($errors->all() as $error)
+        <li>{{ $error }}</li>
+      @endforeach
+    </ul>
+  </div>
+@endif
 
 <form class="nl-card schedule-toolbar" method="GET" id="scheduleFilters">
   <div class="range-switch">
@@ -180,6 +223,23 @@
 @foreach($sessions as $session)
   @include('feeding-schedules.partials.form-modal', ['modalId' => 'sessionModal'.$session->id, 'title' => 'Session Details', 'action' => route('feeding-schedules.update', $session), 'method' => 'PATCH', 'session' => $session])
 @endforeach
+
+@if($errors->any())
+@php
+  $failedScheduleContext = (string) old('_schedule_form_mode', 'add');
+  $failedScheduleModalId = Str::startsWith($failedScheduleContext, 'edit:')
+      ? 'sessionModal'.(int) Str::after($failedScheduleContext, 'edit:')
+      : 'addScheduleModal';
+@endphp
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById(@json($failedScheduleModalId));
+    if (modalElement && window.bootstrap?.Modal) {
+      window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    }
+  });
+</script>
+@endif
 
 <script>
   document.getElementById('scheduleFilters')?.addEventListener('submit', function(){

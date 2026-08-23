@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\NutritionRiskPredictor;
+use App\Services\PythonNutritionRiskPredictor;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 
@@ -12,7 +14,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(NutritionRiskPredictor::class, PythonNutritionRiskPredictor::class);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FeedingSchedule extends Model
 {
@@ -32,6 +33,11 @@ class FeedingSchedule extends Model
     public function school()
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function meals(): HasMany
+    {
+        return $this->hasMany(Meal::class);
     }
 
     public function participantNames(): array

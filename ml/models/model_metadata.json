@@ -1,0 +1,65 @@
+{
+  "model_version": "prototype-v2",
+  "selected_model": "Logistic Regression",
+  "selection_rule": "Highest mean ROC-AUC in 5-fold StratifiedGroupKFold on development children; mean F1 tie-breaker.",
+  "target": "Binary future undernutrition at the first valid follow-up 21-40 days after anchor.",
+  "positive_label": "Future Undernourished or Severely Undernourished",
+  "negative_label": "Future Normal",
+  "excluded_future_labels": [
+    "Overweight",
+    "Obese",
+    "Needs Review",
+    "No Measurement"
+  ],
+  "current_status_vocabulary": [
+    "Normal",
+    "Undernourished",
+    "Severely Undernourished"
+  ],
+  "risk_threshold": 0.5,
+  "feature_columns": [
+    "age_months_at_anchor",
+    "current_weight_kg",
+    "current_height_cm",
+    "current_bmi",
+    "prior_weight_kg",
+    "prior_height_cm",
+    "prior_bmi",
+    "days_since_prior",
+    "weight_change_kg",
+    "height_change_cm",
+    "bmi_change",
+    "weight_change_kg_per_30d",
+    "bmi_change_per_30d",
+    "sex_recorded",
+    "current_bmi_flag"
+  ],
+  "numeric_features": [
+    "age_months_at_anchor",
+    "current_weight_kg",
+    "current_height_cm",
+    "current_bmi",
+    "prior_weight_kg",
+    "prior_height_cm",
+    "prior_bmi",
+    "days_since_prior",
+    "weight_change_kg",
+    "height_change_cm",
+    "bmi_change",
+    "weight_change_kg_per_30d",
+    "bmi_change_per_30d"
+  ],
+  "categorical_features": [
+    "sex_recorded",
+    "current_bmi_flag"
+  ],
+  "same_day_duplicate_rule": "greatest source measurement id wins",
+  "prior_rule": "immediately preceding valid distinct-date measurement",
+  "age_rule": "continuous age months derived before privacy-safe export; floor is used only by the canonical classifier",
+  "artifact_file": "nutriflow_undernutrition_risk_v2.joblib",
+  "artifact_sha256": "981946987753843559039fe455fab055221e7cc54e47495d20c50ebb70ae5fdb",
+  "synthetic_data_only": true,
+  "clinical_validity": false,
+  "production_integration_approved": false,
+  "source_database_modified": false
+}

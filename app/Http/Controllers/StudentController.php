@@ -209,7 +209,13 @@ class StudentController extends Controller
         if (auth()->user()?->school_id && $student->school_id !== auth()->user()->school_id) {
             abort(403);
         }
-        $measurements = $student->measurements()->orderBy('measured_at','asc')->take(20)->get();
+        $measurements = $student->measurements()
+            ->orderByDesc('measured_at')
+            ->orderByDesc('id')
+            ->take(20)
+            ->get()
+            ->sortBy([['measured_at', 'asc'], ['id', 'asc']])
+            ->values();
         $latestMeal = Meal::with('items.food')
             ->where('student_id', $student->id)
             ->latest('served_at')
@@ -310,6 +316,7 @@ class StudentController extends Controller
             'growthTableRows' => $growthTableRows,
             'allergies' => $allergies,
             'mealSearchSuggestions' => $mealSearchSuggestions,
+            'nutritionPlanEnabled' => (bool) config('nutriflow_ml.enabled'),
         ]);
     }
 

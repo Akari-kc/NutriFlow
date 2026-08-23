@@ -1,0 +1,68 @@
+[
+  {
+    "case_id": "golden_normal",
+    "features": {
+      "age_months_at_anchor": 106.5031,
+      "current_weight_kg": 24.7206,
+      "current_height_cm": 135.2,
+      "current_bmi": 13.524,
+      "prior_weight_kg": 24.0018,
+      "prior_height_cm": 134.8,
+      "prior_bmi": 13.2088,
+      "days_since_prior": 31.0,
+      "weight_change_kg": 0.7188000000000017,
+      "height_change_cm": 0.39999999999997726,
+      "bmi_change": 0.31519999999999904,
+      "weight_change_kg_per_30d": 0.695612903225808,
+      "bmi_change_per_30d": 0.30503225806451517,
+      "sex_recorded": "Male",
+      "current_bmi_flag": "Normal"
+    },
+    "expected_probability": 0.2938721000988122,
+    "expected_class": 0
+  },
+  {
+    "case_id": "golden_undernourished",
+    "features": {
+      "age_months_at_anchor": 53.5749,
+      "current_weight_kg": 14.7753,
+      "current_height_cm": 110.6,
+      "current_bmi": 12.0788,
+      "prior_weight_kg": 14.7503,
+      "prior_height_cm": 110.2,
+      "prior_bmi": 12.1461,
+      "days_since_prior": 31.0,
+      "weight_change_kg": 0.025000000000000355,
+      "height_change_cm": 0.3999999999999915,
+      "bmi_change": -0.06730000000000125,
+      "weight_change_kg_per_30d": 0.024193548387097117,
+      "bmi_change_per_30d": -0.06512903225806572,
+      "sex_recorded": "Female",
+      "current_bmi_flag": "Undernourished"
+    },
+    "expected_probability": 0.8984193846428112,
+    "expected_class": 1
+  },
+  {
+    "case_id": "golden_severely_undernourished",
+    "features": {
+      "age_months_at_anchor": 103.4661,
+      "current_weight_kg": 20.8053,
+      "current_height_cm": 133.5,
+      "current_bmi": 11.6738,
+      "prior_weight_kg": 20.9363,
+      "prior_height_cm": 133.2,
+      "prior_bmi": 11.8002,
+      "days_since_prior": 31.0,
+      "weight_change_kg": -0.13100000000000023,
+      "height_change_cm": 0.30000000000001137,
+      "bmi_change": -0.1264000000000003,
+      "weight_change_kg_per_30d": -0.12677419354838732,
+      "bmi_change_per_30d": -0.12232258064516158,
+      "sex_recorded": "Female",
+      "current_bmi_flag": "Severely Undernourished"
+    },
+    "expected_probability": 0.9994776380883811,
+    "expected_class": 1
+  }
+]

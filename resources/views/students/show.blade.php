@@ -78,6 +78,7 @@
   $initials = collect(explode(' ', trim($student->name)))->filter()->map(fn($p) => strtoupper(substr($p, 0, 1)))->take(2)->implode('');
   $flag = \App\Support\ChildBmiClassifier::classifyForStudent($student, $latest);
   $isRisk = \App\Support\ChildBmiClassifier::isUndernourished($flag);
+  $isNormalStatus = $flag === \App\Support\ChildBmiClassifier::NORMAL;
   $latestMealItems = $latestMeal ? $latestMeal->items->map(fn($it) => ($it->food?->name ?? 'Meal').' x'.$it->quantity)->implode(', ') : null;
 @endphp
 
@@ -96,7 +97,7 @@
       <div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <div class="profile-name">{{ $student->name }}</div>
-          <span class="status-pill {{ $isRisk ? 'status-alert' : 'status-healthy' }}">{{ $isRisk ? 'At Risk' : 'Healthy' }}</span>
+          <span class="status-pill {{ $isNormalStatus ? 'status-healthy' : 'status-alert' }}">{{ $flag }}</span>
           @if($allergies->count())
             <span class="status-pill status-alert">Allergy Alert</span>
           @endif
@@ -342,6 +343,8 @@
     </div>
   </div>
 </div>
+
+@include('students.partials.nutrition-plan')
 
 <div class="nl-card compact-form-card" id="mealHistory">
   <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">

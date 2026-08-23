@@ -5,12 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\FeedingSchedule;
 use App\Models\Food;
 use App\Models\Meal;
-use App\Models\MealItem;
 use App\Models\Student;
+use App\Services\CohortNutritionRecommendationService;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class FeedingScheduleController extends Controller
@@ -20,7 +20,6 @@ class FeedingScheduleController extends Controller
         $this->ensureTable();
         $this->seedDefaults();
         $this->backfillExistingSchedules();
-        $this->syncMissingCompletedMealLogs();
 
         $schoolId = auth()->user()?->school_id;
         $mode = request('mode', 'week') === 'month' ? 'month' : 'week';
@@ -55,6 +54,7 @@ class FeedingScheduleController extends Controller
             ->orderBy('session_date')
             ->orderBy('start_time')
             ->get();
+        $sessions->loadCount('meals');
 
         if ($filters['q'] !== '') {
             $needle = strtolower($filters['q']);
@@ -102,7 +102,32 @@ class FeedingScheduleController extends Controller
             'classes' => $classes,
             'sections' => $sections,
             'sessionAllergyWarnings' => $sessionAllergyWarnings,
+            'nutritionPlanEnabled' => (bool) config('nutriflow_ml.enabled'),
         ]);
+    }
+
+    public function recommendations(
+        Request $request,
+        CohortNutritionRecommendationService $recommendationService
+    ): JsonResponse {
+        $data = $request->validate([
+            'participant_student_ids' => 'required|array|min:1|max:300',
+            'participant_student_ids.*' => 'integer|distinct|exists:students,id',
+        ]);
+        $studentIds = collect($data['participant_student_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+        $schoolId = auth()->user()?->school_id;
+        $students = Student::query()
+            ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+            ->whereIn('id', $studentIds)
+            ->orderBy('id')
+            ->get();
+
+        abort_unless($students->count() === $studentIds->count(), 403);
+
+        return response()->json($recommendationService->recommend($students));
     }
 
     public function store(Request $request)
@@ -114,7 +139,6 @@ class FeedingScheduleController extends Controller
         $data['school_id'] = auth()->user()?->school_id;
         $data = $this->prepareScheduleData($data);
         $schedule = FeedingSchedule::create($data);
-        $this->syncCompletedMealLogs($schedule);
 
         return redirect()
             ->route('feeding-schedules.index', ['mode' => 'week', 'date' => $schedule->session_date->toDateString()])
@@ -128,7 +152,6 @@ class FeedingScheduleController extends Controller
         $data = $this->validated($request);
         $this->authorizeSelectedRecords($data);
         $feedingSchedule->update($this->prepareScheduleData($data));
-        $this->syncCompletedMealLogs($feedingSchedule->fresh());
 
         return redirect()
             ->route('feeding-schedules.index', ['mode' => 'week', 'date' => $feedingSchedule->session_date->toDateString()])
@@ -147,20 +170,29 @@ class FeedingScheduleController extends Controller
 
     private function validated(Request $request): array
     {
-        return $request->validate([
-            'session_name' => 'required|string|max:80',
-            'meal_type' => 'required|in:Breakfast,Lunch,Snack,Dinner',
-            'status' => 'required|in:Scheduled,Ongoing,Completed,Cancelled',
-            'session_date' => 'required|date',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
-            'assigned_aide' => 'nullable|string|max:120',
-            'participant_student_ids' => 'required|array|min:1',
-            'participant_student_ids.*' => 'integer|exists:students,id',
-            'selected_food_ids' => 'required|array|min:1',
-            'selected_food_ids.*' => 'integer|exists:foods,id',
-            'notes' => 'nullable|string|max:1000',
-        ]);
+        return $request->validate(
+            [
+                'session_name' => 'required|string|max:80',
+                'meal_type' => 'required|in:Breakfast,Lunch,Snack,Dinner',
+                'status' => 'required|in:Scheduled,Ongoing,Completed,Cancelled',
+                'session_date' => 'required|date',
+                'start_time' => 'required|date_format:H:i',
+                'end_time' => 'required|date_format:H:i|after:start_time',
+                'assigned_aide' => 'nullable|string|max:120',
+                'participant_student_ids' => 'required|array|min:1',
+                'participant_student_ids.*' => 'integer|exists:students,id',
+                'selected_food_ids' => 'required|array|min:1',
+                'selected_food_ids.*' => 'integer|exists:foods,id',
+                'notes' => 'nullable|string|max:1000',
+            ],
+            [
+                'participant_student_ids.required' => 'Select at least one participating student.',
+                'participant_student_ids.min' => 'Select at least one participating student.',
+                'selected_food_ids.required' => 'Select at least one menu item before adding the session.',
+                'selected_food_ids.min' => 'Select at least one menu item before adding the session.',
+                'end_time.after' => 'The end time must be later than the start time.',
+            ]
+        );
     }
 
     private function prepareScheduleData(array $data): array
@@ -254,67 +286,6 @@ class FeedingScheduleController extends Controller
                 $table->unsignedBigInteger('feeding_schedule_id')->nullable()->after('logged_by_user_id');
             });
         }
-    }
-
-    private function syncMissingCompletedMealLogs(): void
-    {
-        $this->ensureMealScheduleColumn();
-        $schoolId = auth()->user()?->school_id;
-
-        FeedingSchedule::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->where('status', 'Completed')
-            ->get()
-            ->each(function ($schedule) {
-                if (! Meal::where('feeding_schedule_id', $schedule->id)->exists()) {
-                    $this->syncCompletedMealLogs($schedule);
-                }
-            });
-    }
-
-    private function syncCompletedMealLogs(FeedingSchedule $schedule): void
-    {
-        if (! $schedule) {
-            return;
-        }
-
-        $this->ensureMealScheduleColumn();
-
-        DB::transaction(function () use ($schedule) {
-            Meal::where('feeding_schedule_id', $schedule->id)->delete();
-
-            if ($schedule->status !== 'Completed') {
-                return;
-            }
-
-            $studentIds = collect($schedule->participant_student_ids)->filter()->map(fn ($id) => (int) $id)->unique()->values();
-            $foodIds = collect($schedule->selected_food_ids)->filter()->map(fn ($id) => (int) $id)->unique()->values();
-
-            if ($studentIds->isEmpty() || $foodIds->isEmpty()) {
-                return;
-            }
-
-            $servedAt = Carbon::parse($schedule->session_date->format('Y-m-d').' '.$schedule->start_time, 'Asia/Manila');
-            $userId = auth()->id();
-
-            foreach ($studentIds as $studentId) {
-                $meal = Meal::create([
-                    'student_id' => $studentId,
-                    'logged_by_user_id' => $userId,
-                    'feeding_schedule_id' => $schedule->id,
-                    'meal_type' => $schedule->meal_type,
-                    'served_at' => $servedAt,
-                ]);
-
-                foreach ($foodIds as $foodId) {
-                    MealItem::create([
-                        'meal_id' => $meal->id,
-                        'food_id' => $foodId,
-                        'quantity' => 1,
-                        'portion_text' => null,
-                    ]);
-                }
-            }
-        });
     }
 
     private function backfillExistingSchedules(): void

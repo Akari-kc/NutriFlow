@@ -5,6 +5,7 @@ use App\Http\Controllers\FeedingScheduleController;
 use App\Http\Controllers\FoodController;
 use App\Http\Controllers\MealController;
 use App\Http\Controllers\NutritionAideController;
+use App\Http\Controllers\NutritionPlanController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\StudentController;
@@ -29,12 +30,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/students', [StudentController::class, 'index'])->name('students.index');
     Route::get('/students/{student}', [StudentController::class, 'show'])->whereNumber('student')->name('students.show');
     Route::post('/students/{student}/measurements', [StudentController::class, 'storeMeasurement'])->whereNumber('student')->name('students.measurements.store');
+    Route::post('/students/{student}/nutrition-assessment', [NutritionPlanController::class, 'assess'])
+        ->whereNumber('student')
+        ->middleware('throttle:10,1')
+        ->name('students.nutrition-assessment');
 
     Route::get('/meals', [MealController::class, 'index'])->name('meals.index');
     Route::get('/meals/batch', [MealController::class, 'batch'])->name('meals.batch');
     Route::post('/meals/batch', [MealController::class, 'batchStore'])->name('meals.batch.store');
 
     Route::get('/feeding-schedules', [FeedingScheduleController::class, 'index'])->name('feeding-schedules.index');
+    Route::post('/feeding-schedules/recommendations', [FeedingScheduleController::class, 'recommendations'])
+        ->middleware('throttle:5,1')
+        ->name('feeding-schedules.recommendations');
     Route::post('/feeding-schedules', [FeedingScheduleController::class, 'store'])->name('feeding-schedules.store');
     Route::patch('/feeding-schedules/{feedingSchedule}', [FeedingScheduleController::class, 'update'])->name('feeding-schedules.update');
 

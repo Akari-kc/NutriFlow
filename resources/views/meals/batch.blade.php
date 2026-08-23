@@ -5,11 +5,44 @@
   <a href="{{ route('meals.index') }}" class="btn btn-outline-secondary btn-sm nl-btn d-inline-flex align-items-center gap-1"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg> Back</a>
   <h4 class="mb-0">Batch Meal Logging</h4>
 </div>
-{{-- Removed explanatory text; filter controls will be shown below the student list --}}
+<p class="text-muted small mb-3">Choose a scheduled session to load its planned participants and meals, then record attendance or substitutions. Use an ad hoc log only when no scheduled session applies.</p>
+@if($errors->any())
+  <div class="alert alert-danger">
+    <ul class="mb-0">
+      @foreach($errors->all() as $error)
+        <li>{{ $error }}</li>
+      @endforeach
+    </ul>
+  </div>
+@endif
 <div class="card nl-card p-3">
   <form method="POST" action="{{ route('meals.batch.store') }}">
     @csrf
     <div class="row g-3 mb-3">
+      <div class="col-md-5">
+        <label class="form-label">Scheduled Feeding Session</label>
+        <select name="feeding_schedule_id" class="form-select" id="feedingScheduleSelect">
+          <option value="">Ad hoc meal (not scheduled)</option>
+          @foreach($schedules as $schedule)
+            @php
+              $scheduleAlreadyLogged = ($schedule->meals_count ?? 0) > 0;
+              $scheduleIsFuture = $schedule->session_date->isFuture();
+            @endphp
+            <option
+              value="{{ $schedule->id }}"
+              @selected((string) old('feeding_schedule_id', request('feeding_schedule_id')) === (string) $schedule->id)
+              @disabled($scheduleAlreadyLogged || $scheduleIsFuture)
+            >
+              {{ $schedule->session_date->format('M d, Y') }} · {{ $schedule->batch_name }} · {{ $schedule->meal_type }}
+              @if($scheduleAlreadyLogged) · already logged @elseif($scheduleIsFuture) · available on session date @endif
+            </option>
+          @endforeach
+        </select>
+        <div class="form-text">Scheduled logs inherit their planned participants and menu. You can remove absentees or record substitutions.</div>
+        @if($schedules->isEmpty())
+          <div class="form-text text-warning">No unlogged scheduled sessions are available. Add a session in Feeding Schedule first.</div>
+        @endif
+      </div>
       <div class="col-md-3">
         <label class="form-label">Meal Type</label>
         <select name="meal_type" class="form-select" required>
@@ -52,9 +85,32 @@
       @endforeach
     </div>
 
+    <section class="border rounded-3 p-3 mb-3 bg-light" id="mealAssessmentPanel">
+      <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+        <div>
+          <div class="fw-bold">Prototype Group Nutrition Assessment</div>
+          <div class="small text-muted">Uses the actual attendance and meal items currently selected below. It does not save an assessment or replace professional review.</div>
+        </div>
+        @if($nutritionPlanEnabled ?? false)
+          <button type="button" class="btn btn-outline-primary btn-sm nl-btn" id="generateMealAssessment">Generate Assessment</button>
+        @endif
+      </div>
+      <div class="small text-muted mt-2" id="mealAssessmentState">
+        @if($nutritionPlanEnabled ?? false)
+          Select the children actually served and the actual meal items, then generate the assessment.
+        @else
+          Prototype assessment is disabled. Meal logging remains available.
+        @endif
+      </div>
+      <div class="mt-3" id="mealAssessmentResults" hidden></div>
+    </section>
+
     <div class="mt-3">
       <div class="d-flex justify-content-between align-items-end mb-2 flex-wrap gap-3">
-        <div class="fw-semibold">Select Students (first 30)</div>
+        <div>
+          <div class="fw-semibold">Actual Attendance</div>
+          <div class="small text-muted">Scheduled participants are selected automatically. Uncheck children who were absent.</div>
+        </div>
         <div class="d-flex gap-3 align-items-end flex-wrap">
           <div>
             <label class="form-label">Search</label>
@@ -128,24 +184,36 @@
   </form>
 </div>
 
+@php
+  $foodAssessmentData = $foods->map(fn($food) => [
+    'id' => $food->id,
+    'name' => $food->name,
+    'text' => trim($food->name.' '.$food->portion.' '.$food->recipe.' '.implode(' ', $food->allergyAlerts())),
+  ]);
+@endphp
 <script>
-  const foods = @json($foods->map(fn($f)=>['id'=>$f->id,'name'=>$f->name]));
+  const foods = @json($foodAssessmentData);
+  const scheduleData = @json($scheduleData);
+  const studentAssessmentData = @json($studentAssessmentData);
+  const scheduleSelect = document.getElementById('feedingScheduleSelect');
+  const mealTypeSelect = document.querySelector('select[name="meal_type"]');
+  const servedAtInput = document.querySelector('input[name="served_at"]');
   const itemsDiv = document.getElementById('items');
   document.getElementById('addItem').addEventListener('click', () => addRow());
-  function addRow(){
+  function addRow(selectedFoodId = null){
     const idx = itemsDiv.querySelectorAll('.row').length;
     const row = document.createElement('div');
-    row.innerHTML = rowHtml(idx);
+    row.innerHTML = rowHtml(idx, selectedFoodId);
     itemsDiv.appendChild(row.firstElementChild);
   }
-  function rowHtml(idx){
+  function rowHtml(idx, selectedFoodId = null){
     return `
     <div class=\"row g-2 align-items-end mb-2\">
       <div class=\"col-md-6\">
   <label class=\"form-label\">Meal</label>
         <select name=\"items[${idx}][food_id]\" class=\"form-select\" required>
           <option value=\"\">-- Select --</option>
-          ${foods.map(f=>`<option value=\"${f.id}\">${f.name}</option>`).join('')}
+          ${foods.map(f=>`<option value=\"${f.id}\" ${String(f.id) === String(selectedFoodId) ? 'selected' : ''}>${f.name}</option>`).join('')}
         </select>
       </div>
       <div class=\"col-md-3\">
@@ -157,6 +225,8 @@
   const batchGradeSections = @json(($gradeSections ?? collect())->map(fn($sections) => $sections->values()));
   const selectedStorageKey = 'nutriflow.batchMeal.selectedStudents';
   const selectedIds = new Set(JSON.parse(localStorage.getItem(selectedStorageKey) || '[]').map(String));
+  const initialScheduleId = scheduleSelect?.value || '';
+  const preserveOldInput = @json($errors->any());
 
   function persistSelectedIds() {
     localStorage.setItem(selectedStorageKey, JSON.stringify(Array.from(selectedIds)));
@@ -171,6 +241,33 @@
     document.querySelectorAll('.student-check').forEach(function(box) {
       box.checked = selectedIds.has(String(box.value));
     });
+  }
+
+  function refreshPageMaster() {
+    const master = document.getElementById('selectAllPage');
+    if (!master) return;
+    const boxes = Array.from(document.querySelectorAll('.student-check'));
+    const checked = boxes.filter((box) => box.checked).length;
+    master.checked = boxes.length > 0 && checked === boxes.length;
+    master.indeterminate = checked > 0 && checked < boxes.length;
+  }
+
+  function applyScheduledSession(scheduleId) {
+    const schedule = scheduleData[String(scheduleId)];
+    if (!schedule) return;
+
+    selectedIds.clear();
+    (schedule.participant_ids || []).forEach((id) => selectedIds.add(String(id)));
+    persistSelectedIds();
+    syncVisibleChecks();
+    updateSelectedCount();
+    refreshPageMaster();
+
+    mealTypeSelect.value = schedule.meal_type;
+    servedAtInput.value = schedule.served_at;
+    itemsDiv.replaceChildren();
+    (schedule.food_ids || []).forEach((foodId) => addRow(foodId));
+    if (!(schedule.food_ids || []).length) addRow();
   }
 
   function appendPersistedSelections() {
@@ -222,6 +319,16 @@
     refreshMaster();
   })();
 
+  scheduleSelect?.addEventListener('change', function() {
+    if (this.value) {
+      applyScheduledSession(this.value);
+      clearMealAssessment('Scheduled details loaded. Confirm actual attendance and substitutions before assessing or logging.');
+      return;
+    }
+    clearMealAssessment('Ad hoc mode selected. Choose the actual participants and meal items manually.');
+  });
+  if (initialScheduleId && !preserveOldInput) applyScheduledSession(initialScheduleId);
+
   function syncBatchSections() {
     const cls = document.getElementById('filterClass');
     const sec = document.getElementById('filterSection');
@@ -257,6 +364,7 @@
     const sec = document.getElementById('filterSection').value;
     const q = document.getElementById('filterSearch').value.trim();
     const params = new URLSearchParams();
+    if (scheduleSelect?.value) params.set('feeding_schedule_id', scheduleSelect.value);
     if (q) params.set('q', q);
     if (cls) params.set('class_name', cls);
     if (sec) params.set('section', sec);
@@ -270,5 +378,128 @@
     });
     appendPersistedSelections();
   });
+
+  const assessmentButton = document.getElementById('generateMealAssessment');
+  const assessmentState = document.getElementById('mealAssessmentState');
+  const assessmentResults = document.getElementById('mealAssessmentResults');
+
+  function clearMealAssessment(message) {
+    if (assessmentResults) {
+      assessmentResults.hidden = true;
+      assessmentResults.replaceChildren();
+    }
+    if (assessmentState && message) assessmentState.textContent = message;
+  }
+
+  function allergyTerms(allergy) {
+    const base = String(allergy || '').trim().toLowerCase();
+    const aliases = {
+      'milk': ['milk', 'dairy', 'lactose', 'cheese', 'cream', 'butter'],
+      'lactose': ['milk', 'dairy', 'lactose'],
+      'egg': ['egg', 'eggs'],
+      'eggs': ['egg', 'eggs'],
+      'peanuts': ['peanut', 'peanuts', 'nut'],
+      'tree nuts': ['tree nuts', 'nut', 'almond', 'cashew', 'walnut'],
+      'wheat/gluten': ['wheat', 'gluten', 'flour', 'bread', 'noodle', 'pancit'],
+      'shellfish': ['shellfish', 'shrimp', 'crab', 'squid']
+    };
+    const terms = [base];
+    Object.entries(aliases).forEach(([key, values]) => {
+      if (base === key || base.includes(key)) terms.push(...values);
+    });
+    return Array.from(new Set(terms.filter(Boolean)));
+  }
+
+  function selectedFoodIds() {
+    return Array.from(itemsDiv.querySelectorAll('select[name$="[food_id]"]'))
+      .map((select) => Number(select.value))
+      .filter(Boolean);
+  }
+
+  function recordedAllergyWarnings(foodIds) {
+    const selectedFoods = foodIds
+      .map((id) => foods.find((food) => Number(food.id) === Number(id)))
+      .filter(Boolean);
+    const warnings = [];
+
+    selectedIds.forEach((studentId) => {
+      const student = studentAssessmentData[String(studentId)];
+      if (!student?.allergies) return;
+      const allergies = String(student.allergies).split(/[,;\n]+/).map((value) => value.trim()).filter(Boolean);
+      selectedFoods.forEach((food) => {
+        const foodText = String(food.text || '').toLowerCase();
+        if (allergies.some((allergy) => allergyTerms(allergy).some((term) => foodText.includes(term)))) {
+          warnings.push(student.name + ': ' + food.name + ' may conflict with ' + allergies.join(', '));
+        }
+      });
+    });
+
+    return warnings;
+  }
+
+  async function generateMealAssessment() {
+    const participantIds = Array.from(selectedIds).map(Number);
+    const foodIds = selectedFoodIds();
+    if (!participantIds.length || !foodIds.length) {
+      clearMealAssessment('Select at least one child and one meal item first.');
+      return;
+    }
+
+    assessmentButton.disabled = true;
+    assessmentButton.textContent = 'Assessing...';
+    clearMealAssessment('Assessing the selected attendance and meal items...');
+
+    try {
+      const response = await fetch(@json(route('feeding-schedules.recommendations')), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': @json(csrf_token())
+        },
+        body: JSON.stringify({ participant_student_ids: participantIds })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || 'Unable to generate the assessment.');
+      if (payload.status !== 'success') {
+        clearMealAssessment(payload.message || 'The assessment is currently unavailable.');
+        return;
+      }
+
+      const warnings = recordedAllergyWarnings(foodIds);
+      const recommendedIds = new Set((payload.meals || []).map((meal) => Number(meal.food_id)));
+      const matchingFoods = foodIds.filter((id) => recommendedIds.has(Number(id))).length;
+      const summary = payload.summary || {};
+      const headline = document.createElement('div');
+      headline.className = 'fw-bold text-primary';
+      headline.textContent = summary.eligible_count + ' of ' + summary.selected_count + ' selected children were eligible for prototype assessment.';
+      const fit = document.createElement('div');
+      fit.className = 'mt-2';
+      fit.textContent = matchingFoods + ' of ' + foodIds.length + ' selected meal item(s) appear among the current top group matches.';
+      const priorities = document.createElement('div');
+      priorities.className = 'small text-muted mt-2';
+      priorities.textContent = 'Combined priorities: ' + Object.entries(payload.priorities || {})
+        .map(([name, level]) => name + ' (' + level + ')')
+        .join(', ');
+      const safety = document.createElement('div');
+      safety.className = warnings.length ? 'alert alert-danger mt-3 mb-0' : 'alert alert-success mt-3 mb-0';
+      safety.textContent = warnings.length
+        ? 'Recorded allergy warning: ' + warnings.slice(0, 3).join(' · ')
+        : 'No conflict was found between the selected foods and the available recorded allergy text.';
+      assessmentResults.replaceChildren(headline, fit, priorities, safety);
+      assessmentResults.hidden = false;
+      assessmentState.textContent = 'Assessment generated for the current selections. Change attendance or meals and regenerate if needed.';
+    } catch (error) {
+      clearMealAssessment(error.message || 'Unable to generate the assessment.');
+    } finally {
+      assessmentButton.disabled = false;
+      assessmentButton.textContent = 'Generate Assessment';
+    }
+  }
+
+  assessmentButton?.addEventListener('click', generateMealAssessment);
+  if (initialScheduleId && !preserveOldInput && assessmentState) {
+    assessmentState.textContent = 'Scheduled details loaded. Confirm actual attendance and substitutions before assessing or logging.';
+  }
 </script>
 @endsection

@@ -31,7 +31,7 @@
 <div class="meals-head">
   <div>
     <h1 class="meals-title">Meal Logs</h1>
-    <div class="meals-subtitle">{{ number_format($meals->total() ?? 0) }} completed schedule logs found</div>
+    <div class="meals-subtitle">{{ number_format($meals->total() ?? 0) }} individual serving records from scheduled and ad hoc meal logs</div>
   </div>
   <a href="{{ route('meals.batch') }}" class="btn btn-primary nl-btn">Log Meals</a>
 </div>
@@ -104,6 +104,7 @@
             <th>Student</th>
             <th>Grade</th>
             <th>Section</th>
+            <th>Source</th>
             <th>Meal</th>
             <th>Foods</th>
           </tr>
@@ -120,6 +121,15 @@
               </td>
               <td>{{ $m->student?->class_name }}</td>
               <td>{{ $m->student?->section }}</td>
+              <td>
+                @if($m->feedingSchedule)
+                  <strong>{{ $m->feedingSchedule->batch_name }}</strong>
+                  <span class="meal-meta">Scheduled session</span>
+                @else
+                  <strong>Ad hoc</strong>
+                  <span class="meal-meta">Manually logged</span>
+                @endif
+              </td>
               <td><span class="meal-type-pill">{{ $m->meal_type }}</span></td>
               <td>
                 @foreach($m->items as $it)
@@ -136,7 +146,7 @@
       <div>{{ $meals->links() }}</div>
     </div>
   @else
-    <div class="p-4 text-muted">No completed schedule meal logs match the current filters.</div>
+    <div class="p-4 text-muted">No meal logs match the current filters.</div>
   @endif
 </div>
 
