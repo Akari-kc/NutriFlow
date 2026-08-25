@@ -325,9 +325,9 @@ class FeedingScheduleController extends Controller
         $defaults = [
             ['Breakfast', 'Batch A', 'Grades 1-2', '07:00', '07:30', 82, 'I. Greenfield', 'Arroz Caldo, Fresh Milk, Banana', 'Completed', 0],
             ['Breakfast', 'Batch B', 'Grades 3-4', '07:30', '08:00', 96, 'M. Santos', 'Pandesal, Boiled Egg, Orange Juice', 'Completed', 0],
-            ['Lunch', 'Batch A', 'Grades 1-2', '12:00', '12:30', 80, 'I. Greenfield', 'Chicken Adobo, Steamed Rice, Vegetable Soup', 'Completed', 0],
+            ['Lunch', 'Batch A', 'Grades 1-2', '12:00', '12:30', 80, 'I. Greenfield', 'Adobong Manok, Steamed Rice, Vegetable Soup', 'Completed', 0],
             ['Lunch', 'Batch B', 'Grades 3-4', '12:30', '13:00', 94, 'M. Santos', 'Pancit Bihon, Steamed Rice, Fruit Salad', 'Ongoing', 0],
-            ['Lunch', 'Batch C', 'Grades 5-6', '13:00', '13:30', 78, 'R. Dela Cruz', 'Beef Nilaga, Steamed Rice, Banana', 'Scheduled', 0],
+            ['Lunch', 'Batch C', 'Grades 5-6', '13:00', '13:30', 78, 'R. Dela Cruz', 'Nilagang Baka, Steamed Rice, Banana', 'Scheduled', 0],
             ['Breakfast', 'Batch A', 'Grades 1-2', '07:00', '07:30', 82, 'I. Greenfield', 'Champorado, Fresh Milk', 'Scheduled', 1],
             ['Lunch', 'Batch A', 'Grades 1-2', '12:00', '12:30', 80, 'I. Greenfield', 'Tinola, Steamed Rice, Papaya', 'Scheduled', 1],
         ];

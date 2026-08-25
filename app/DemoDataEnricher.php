@@ -8,6 +8,7 @@ use App\Models\GrowthMeasurement;
 use App\Models\Meal;
 use App\Models\MealItem;
 use App\Models\Student;
+use App\Support\SyntheticGrowthProfile;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ class DemoDataEnricher
 {
     public static function run(?int $schoolId): void
     {
-        if (!self::ready($schoolId)) {
+        if (! self::ready($schoolId)) {
             return;
         }
 
@@ -25,12 +26,12 @@ class DemoDataEnricher
         $julyMarker = 'july_daily_demo_data_v1_school_'.($schoolId ?: 'all');
 
         DB::transaction(function () use ($schoolId, $expandedMarker, $julyMarker) {
-            $students = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            $students = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->with('latestMeasurement')
                 ->orderBy('id')
                 ->get();
 
-            $foods = Food::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+            $foods = Food::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->orderBy('name')
                 ->get();
 
@@ -38,7 +39,7 @@ class DemoDataEnricher
                 return;
             }
 
-            if (!DB::table('demo_data_markers')->where('marker_key', $expandedMarker)->exists()) {
+            if (! DB::table('demo_data_markers')->where('marker_key', $expandedMarker)->exists()) {
                 self::renameFirstNames($students);
                 self::addGrowthHistory($students);
                 self::addCompletedMealHistory($students, $foods, $schoolId);
@@ -50,7 +51,7 @@ class DemoDataEnricher
                 ]);
             }
 
-            if (!DB::table('demo_data_markers')->where('marker_key', $julyMarker)->exists()) {
+            if (! DB::table('demo_data_markers')->where('marker_key', $julyMarker)->exists()) {
                 self::addJulyGrowthChecks($students);
                 self::addJulyCompletedFeeding($students, $foods, $schoolId);
 
@@ -98,8 +99,7 @@ class DemoDataEnricher
         foreach ($students as $index => $student) {
             $latest = $student->latestMeasurement;
             $height = (float) ($latest?->height_cm ?: 122 + ($index % 32));
-            $currentBmi = (float) ($latest?->bmi ?: 16.4 + (($index % 10) * 0.35));
-            $monthlyChange = $currentBmi < 14 ? -0.18 : ($currentBmi < 18.5 ? -0.08 : 0.06);
+            $targetStatus = SyntheticGrowthProfile::statusForOrdinal($index);
 
             for ($monthsAgo = 8; $monthsAgo >= 1; $monthsAgo--) {
                 $date = Carbon::now('Asia/Manila')->startOfMonth()->subMonths($monthsAgo)->addDays(($index % 20) + 1);
@@ -108,16 +108,21 @@ class DemoDataEnricher
                 }
 
                 $heightCm = round(max(92, $height - ($monthsAgo * 0.32)), 1);
-                $bmi = round(max(11.5, $currentBmi - ($monthsAgo * $monthlyChange) + (((($index + $monthsAgo) % 5) - 2) * 0.09)), 2);
-                $weightKg = round($bmi * (($heightCm / 100) ** 2), 2);
+                $values = SyntheticGrowthProfile::measurementValues(
+                    $student,
+                    $date,
+                    $heightCm,
+                    $targetStatus,
+                    (8 - $monthsAgo) / 7
+                );
 
                 GrowthMeasurement::create([
                     'student_id' => $student->id,
                     'measured_at' => $date->toDateString(),
-                    'weight_kg' => $weightKg,
+                    'weight_kg' => $values['weight_kg'],
                     'height_cm' => $heightCm,
-                    'bmi' => $bmi,
-                    'bmi_flag' => $bmi < 18.5 ? 'Underweight' : ($bmi < 25 ? 'Normal' : ($bmi < 30 ? 'Overweight' : 'Obese')),
+                    'bmi' => $values['bmi'],
+                    'bmi_flag' => $values['bmi_flag'],
                 ]);
             }
         }
@@ -132,7 +137,7 @@ class DemoDataEnricher
         foreach ($students as $index => $student) {
             $latest = $student->latestMeasurement;
             $targetHeight = (float) ($latest?->height_cm ?: 122 + ($index % 32));
-            $targetBmi = (float) ($latest?->bmi ?: 16.4 + (($index % 10) * 0.35));
+            $targetStatus = SyntheticGrowthProfile::statusForOrdinal($index);
 
             for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
                 if (GrowthMeasurement::where('student_id', $student->id)->whereDate('measured_at', $date->toDateString())->exists()) {
@@ -142,17 +147,21 @@ class DemoDataEnricher
                 $remainingDays = $date->diffInDays($end);
                 $progress = $date->diffInDays($start) / $totalDays;
                 $heightCm = round(max(92, $targetHeight - ($remainingDays * 0.04)), 1);
-                $bmiShift = ((($index + (int) $date->format('j')) % 5) - 2) * 0.03;
-                $bmi = round(max(11.5, $targetBmi - ($remainingDays * 0.025) + $bmiShift + ($progress * 0.05)), 2);
-                $weightKg = round($bmi * (($heightCm / 100) ** 2), 2);
+                $values = SyntheticGrowthProfile::measurementValues(
+                    $student,
+                    $date,
+                    $heightCm,
+                    $targetStatus,
+                    $progress
+                );
 
                 GrowthMeasurement::create([
                     'student_id' => $student->id,
                     'measured_at' => $date->toDateString(),
-                    'weight_kg' => $weightKg,
+                    'weight_kg' => $values['weight_kg'],
                     'height_cm' => $heightCm,
-                    'bmi' => $bmi,
-                    'bmi_flag' => $bmi < 18.5 ? 'Underweight' : ($bmi < 25 ? 'Normal' : ($bmi < 30 ? 'Overweight' : 'Obese')),
+                    'bmi' => $values['bmi'],
+                    'bmi_flag' => $values['bmi_flag'],
                 ]);
             }
         }
@@ -176,14 +185,14 @@ class DemoDataEnricher
                 }
 
                 $name = $groupName.' - '.$date->format('M d');
-                if (FeedingSchedule::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                if (FeedingSchedule::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                     ->where('batch_name', $name)
                     ->whereDate('session_date', $date->toDateString())
                     ->exists()) {
                     continue;
                 }
 
-                $participants = $studentIds->filter(fn($id, $i) => (($i + $daysAgo + $templateIndex) % 5) < 2)->take(52)->values();
+                $participants = $studentIds->filter(fn ($id, $i) => (($i + $daysAgo + $templateIndex) % 5) < 2)->take(52)->values();
                 $menu = $foods->slice(($daysAgo + $templateIndex) % max(1, $foods->count() - 2), 3)->values();
 
                 $schedule = FeedingSchedule::create([
@@ -242,7 +251,7 @@ class DemoDataEnricher
 
             foreach ($templates as $templateIndex => [$mealType, $groupName, $startTime, $endTime]) {
                 $name = $groupName.' - '.$date->format('M d');
-                if (FeedingSchedule::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
+                if (FeedingSchedule::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                     ->where('batch_name', $name)
                     ->whereDate('session_date', $date->toDateString())
                     ->exists()) {
@@ -250,7 +259,7 @@ class DemoDataEnricher
                 }
 
                 $participants = $studentIds
-                    ->filter(fn($id, $i) => (($i + $dayOffset + $templateIndex) % 4) < 2)
+                    ->filter(fn ($id, $i) => (($i + $dayOffset + $templateIndex) % 4) < 2)
                     ->take(70)
                     ->values();
                 $menu = self::rotatingMenu($foods, $dayOffset + $templateIndex, 3);
@@ -298,14 +307,14 @@ class DemoDataEnricher
     private static function rotatingMenu($foods, int $offset, int $count)
     {
         return collect(range(0, $count - 1))
-            ->map(fn($step) => $foods[($offset + $step) % $foods->count()])
+            ->map(fn ($step) => $foods[($offset + $step) % $foods->count()])
             ->values();
     }
 
     private static function ready(?int $schoolId): bool
     {
         try {
-            if (!Schema::hasTable('demo_data_markers')) {
+            if (! Schema::hasTable('demo_data_markers')) {
                 Schema::create('demo_data_markers', function (Blueprint $table) {
                     $table->id();
                     $table->string('marker_key')->unique();
@@ -313,7 +322,7 @@ class DemoDataEnricher
                 });
             }
 
-            if (Schema::hasTable('meals') && !Schema::hasColumn('meals', 'feeding_schedule_id')) {
+            if (Schema::hasTable('meals') && ! Schema::hasColumn('meals', 'feeding_schedule_id')) {
                 Schema::table('meals', function (Blueprint $table) {
                     $table->unsignedBigInteger('feeding_schedule_id')->nullable()->after('logged_by_user_id');
                 });

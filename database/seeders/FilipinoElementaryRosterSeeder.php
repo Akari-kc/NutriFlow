@@ -10,6 +10,7 @@ use App\Models\MealItem;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
+use App\Support\SyntheticGrowthProfile;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Seeder;
@@ -137,22 +138,27 @@ class FilipinoElementaryRosterSeeder extends Seeder
             default => 6,
         };
         $baseHeight = 107 + ($gradeIndex * 6) + ($studentNumber % 5);
-        $baseWeight = 17 + ($gradeIndex * 3.2) + (($studentNumber % 6) * .8);
         $days = [60, 45, 30, 15, 0];
+        $targetStatus = SyntheticGrowthProfile::statusForOrdinal($studentNumber - 1);
 
         foreach ($days as $index => $daysAgo) {
             $height = round($baseHeight + ($index * .45), 1);
-            $weight = round($baseWeight + ($index * .28), 2);
-            $heightM = $height / 100;
-            $bmi = round($weight / ($heightM * $heightM), 2);
+            $measuredAt = Carbon::today('Asia/Manila')->subDays($daysAgo);
+            $values = SyntheticGrowthProfile::measurementValues(
+                $student,
+                $measuredAt,
+                $height,
+                $targetStatus,
+                $index / max(count($days) - 1, 1)
+            );
 
             GrowthMeasurement::create([
                 'student_id' => $student->id,
-                'measured_at' => Carbon::today('Asia/Manila')->subDays($daysAgo)->toDateString(),
-                'weight_kg' => $weight,
+                'measured_at' => $measuredAt->toDateString(),
+                'weight_kg' => $values['weight_kg'],
                 'height_cm' => $height,
-                'bmi' => $bmi,
-                'bmi_flag' => $bmi < 18.5 ? 'Underweight' : 'Normal',
+                'bmi' => $values['bmi'],
+                'bmi_flag' => $values['bmi_flag'],
             ]);
         }
     }

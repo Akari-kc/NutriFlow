@@ -10,11 +10,17 @@ use Illuminate\Support\Carbon;
 class ChildBmiClassifier
 {
     public const SEVERELY_UNDERNOURISHED = 'Severely Undernourished';
+
     public const UNDERNOURISHED = 'Undernourished';
+
     public const NORMAL = 'Normal';
+
     public const OVERWEIGHT = 'Overweight';
+
     public const OBESE = 'Obese';
+
     public const NEEDS_REVIEW = 'Needs Review';
+
     public const NO_MEASUREMENT = 'No Measurement';
 
     public const STATUSES = [
@@ -120,6 +126,30 @@ class ChildBmiClassifier
             self::NO_MEASUREMENT, self::NEEDS_REVIEW => 'Review',
             default => 'Low',
         };
+    }
+
+    /**
+     * @return array{severe_thinness: float, thinness: float, overweight: float, obesity: float}|null
+     */
+    public static function bmiThresholds(
+        string $gender,
+        CarbonInterface|string $birthdate,
+        CarbonInterface|string $measuredAt
+    ): ?array {
+        $sex = self::normalizeGender($gender);
+        $ageMonths = self::ageInMonths($birthdate, $measuredAt);
+        if (! $sex || $ageMonths === null || $ageMonths < 0) {
+            return null;
+        }
+
+        [$severeThinness, $thinness, $overweight, $obesity] = self::thresholds($sex, $ageMonths);
+
+        return [
+            'severe_thinness' => $severeThinness,
+            'thinness' => $thinness,
+            'overweight' => $overweight,
+            'obesity' => $obesity,
+        ];
     }
 
     private static function thresholds(string $sex, int $ageMonths): array

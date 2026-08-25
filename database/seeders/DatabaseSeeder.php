@@ -48,6 +48,8 @@ class DatabaseSeeder extends Seeder
             RbacUserSeeder::class,
             FoodSeeder::class,
             FilipinoElementaryRosterSeeder::class,
+            StandardizeFoodDisplayNamesSeeder::class,
+            BackfillSyntheticGrowthHistorySeeder::class,
         ]);
     }
 }

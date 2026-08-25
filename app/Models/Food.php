@@ -13,7 +13,7 @@ class Food extends Model
     protected $table = 'foods';
 
     protected $fillable = [
-        'name', 'portion', 'school_id', 'recipe'
+        'name', 'portion', 'school_id', 'recipe',
     ];
 
     public function school()
@@ -34,7 +34,7 @@ class Food extends Model
             'Egg' => ['egg', 'torta', 'tortang'],
             'Fish' => ['fish', 'tuna', 'sardine', 'sarciado'],
             'Shellfish' => ['shrimp', 'crab', 'shellfish', 'squid'],
-            'Soy' => ['soy', 'tofu', 'tokwa', 'adobo', 'monggo'],
+            'Soy' => ['soy', 'tofu', 'tokwa', 'adobo', 'monggo', 'munggo'],
             'Wheat/Gluten' => ['wheat', 'gluten', 'flour', 'bread', 'sandwich', 'pancit', 'noodle', 'sopas'],
             'Peanuts/Tree Nuts' => ['peanut', 'cashew', 'almond', 'walnut', 'nut'],
             'Sesame' => ['sesame'],
