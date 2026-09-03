@@ -96,9 +96,9 @@
               </div>
               <div class="student-picker-list">
                 @foreach($students as $student)
-                  <label class="student-picker-row" data-student-row data-name="{{ Str::lower($student->name) }}" data-grade="{{ $student->class_name }}" data-section="{{ $student->section }}" data-allergies="{{ $student->allergies }}">
+                  <label class="student-picker-row" data-student-row data-name="{{ Str::lower($student->display_name.' '.$student->learner_uid) }}" data-grade="{{ $student->class_name }}" data-section="{{ $student->section }}" data-allergies="{{ $student->allergies }}">
                     <span>
-                      <span class="student-picker-name">{{ $student->name }}</span>
+                      <span class="student-picker-name">{{ $student->display_name }} <small class="text-muted">{{ $student->learner_uid }}</small></span>
                       <span class="student-picker-meta d-block">{{ $student->class_name }} - Section {{ $student->section }}</span>
                     </span>
                     <input class="form-check-input" type="checkbox" name="participant_student_ids[]" value="{{ $student->id }}" @checked(in_array($student->id, $selectedStudentIds, true))>

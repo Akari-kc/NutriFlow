@@ -52,11 +52,11 @@
     <form method="POST" action="{{ route('students.store') }}">
       @csrf
 
-      <div class="section-label">Name</div>
+      <div class="section-label">Name <span class="text-muted fw-normal">(optional)</span></div>
       <div class="row g-3 mb-4">
         <div class="col-md-4">
           <label class="form-label">First Name</label>
-          <input name="first_name" value="{{ old('first_name') }}" class="form-control" required>
+          <input name="first_name" value="{{ old('first_name') }}" class="form-control">
           @error('first_name')<div class="text-danger small">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-2">
@@ -66,7 +66,7 @@
         </div>
         <div class="col-md-4">
           <label class="form-label">Last Name</label>
-          <input name="last_name" value="{{ old('last_name') }}" class="form-control" required>
+          <input name="last_name" value="{{ old('last_name') }}" class="form-control">
           @error('last_name')<div class="text-danger small">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-2">
@@ -80,10 +80,17 @@
         </div>
       </div>
 
+      <div class="helper-copy mb-4">A name can be added for authorized local use. It does not affect assessments, recommendations, schedules, or model results.</div>
+
       <div class="section-label">School Details</div>
       <div class="row g-3 mb-4">
         <div class="col-lg-3 col-md-4">
-          <label class="form-label">LRN / Student ID</label>
+          <label class="form-label">Learner ID</label>
+          <input value="Generated after saving" class="form-control" disabled>
+          <div class="form-text">Permanent ID in the format LEARNER-001.</div>
+        </div>
+        <div class="col-lg-3 col-md-4">
+          <label class="form-label">LRN (optional)</label>
           <input name="lrn" value="{{ old('lrn') }}" class="form-control" placeholder="Optional">
           @error('lrn')<div class="text-danger small">{{ $message }}</div>@enderror
         </div>
@@ -141,7 +148,7 @@
         @foreach($selected as $allergy)
           <div class="allergy-row-edit">
             <select name="allergies[]" class="form-select allergy-select">
-              <option value="">No allergy selected</option>
+              <option value="">Not recorded</option>
               @foreach($allergyOptions as $option)
                 <option value="{{ $option }}" @selected($allergy['select'] === $option)>{{ $option }}</option>
               @endforeach
@@ -152,7 +159,7 @@
           </div>
         @endforeach
       </div>
-      <div class="helper-copy mb-4">Use one row per allergy. Choose Other when the allergy is not listed.</div>
+      <div class="helper-copy mb-4">Blank means Not recorded, not that the learner has no allergies. Use one row per known allergy.</div>
       @error('allergies')<div class="text-danger small">{{ $message }}</div>@enderror
       @error('allergies.*')<div class="text-danger small">{{ $message }}</div>@enderror
 
@@ -198,7 +205,7 @@
 <template id="allergyTemplate">
   <div class="allergy-row-edit">
     <select name="allergies[]" class="form-select allergy-select">
-      <option value="">No allergy selected</option>
+      <option value="">Not recorded</option>
       @foreach($allergyOptions as $option)
         <option value="{{ $option }}">{{ $option }}</option>
       @endforeach

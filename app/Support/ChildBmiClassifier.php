@@ -9,9 +9,15 @@ use Illuminate\Support\Carbon;
 
 class ChildBmiClassifier
 {
-    public const SEVERELY_UNDERNOURISHED = 'Severely Undernourished';
+    public const SEVERELY_WASTED = 'Severely Wasted';
 
-    public const UNDERNOURISHED = 'Undernourished';
+    public const WASTED = 'Wasted';
+
+    /** @deprecated Use SEVERELY_WASTED. */
+    public const SEVERELY_UNDERNOURISHED = self::SEVERELY_WASTED;
+
+    /** @deprecated Use WASTED. */
+    public const UNDERNOURISHED = self::WASTED;
 
     public const NORMAL = 'Normal';
 
@@ -25,8 +31,8 @@ class ChildBmiClassifier
 
     public const STATUSES = [
         self::NORMAL,
-        self::UNDERNOURISHED,
-        self::SEVERELY_UNDERNOURISHED,
+        self::WASTED,
+        self::SEVERELY_WASTED,
         self::OVERWEIGHT,
         self::OBESE,
         self::NEEDS_REVIEW,
@@ -60,6 +66,14 @@ class ChildBmiClassifier
 
     public static function classifyForStudent(Student $student, ?GrowthMeasurement $measurement): string
     {
+        if ($measurement?->data_origin === 'Imported') {
+            $sourceStatus = self::normalizeStatus($measurement->source_nutrition_status)
+                ?? self::normalizeStatus($measurement->bmi_flag);
+            if ($sourceStatus) {
+                return $sourceStatus;
+            }
+        }
+
         if (! $measurement || ! $measurement->bmi || (float) $measurement->bmi <= 0) {
             return self::NO_MEASUREMENT;
         }
@@ -95,11 +109,11 @@ class ChildBmiClassifier
         [$severeThinness, $thinness, $overweight, $obesity] = self::thresholds($sex, $ageMonths);
 
         if ($bmi < $severeThinness) {
-            return self::SEVERELY_UNDERNOURISHED;
+            return self::SEVERELY_WASTED;
         }
 
         if ($bmi < $thinness) {
-            return self::UNDERNOURISHED;
+            return self::WASTED;
         }
 
         if ($bmi > $obesity) {
@@ -115,14 +129,33 @@ class ChildBmiClassifier
 
     public static function isUndernourished(?string $status): bool
     {
-        return in_array($status, [self::UNDERNOURISHED, self::SEVERELY_UNDERNOURISHED], true);
+        return in_array($status, [
+            self::WASTED,
+            self::SEVERELY_WASTED,
+            'Undernourished',
+            'Severely Undernourished',
+        ], true);
+    }
+
+    public static function normalizeStatus(?string $status): ?string
+    {
+        return match (strtolower(trim((string) $status))) {
+            'severely wasted', 's wasted', 'severe wasted', 'severely undernourished' => self::SEVERELY_WASTED,
+            'wasted', 'undernourished', 'underweight' => self::WASTED,
+            'normal' => self::NORMAL,
+            'overweight' => self::OVERWEIGHT,
+            'obese' => self::OBESE,
+            'needs review' => self::NEEDS_REVIEW,
+            'no measurement' => self::NO_MEASUREMENT,
+            default => null,
+        };
     }
 
     public static function riskLevel(?string $status): string
     {
         return match ($status) {
-            self::SEVERELY_UNDERNOURISHED => 'Severe',
-            self::UNDERNOURISHED => 'Moderate',
+            self::SEVERELY_WASTED, 'Severely Undernourished' => 'Severe',
+            self::WASTED, 'Undernourished' => 'Moderate',
             self::NO_MEASUREMENT, self::NEEDS_REVIEW => 'Review',
             default => 'Low',
         };

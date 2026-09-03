@@ -42,13 +42,17 @@ class RebalanceSyntheticNutritionSeeder extends Seeder
                         $progress
                     );
 
-                    $measurement->forceFill($values)->saveQuietly();
+                    $measurement->forceFill(array_merge($values, [
+                        'source_nutrition_status' => $values['bmi_flag'],
+                        'assessment_method' => 'NutriFlow BMI-for-age prototype',
+                        'data_origin' => 'Synthetic',
+                    ]))->saveQuietly();
                 }
             }
         });
 
         $this->command?->info(
-            'Rebalanced '.$students->count().' synthetic children to 70% undernourished, 20% normal, and 10% severely undernourished.'
+            'Rebalanced '.$students->count().' synthetic children to 70% wasted, 20% normal, and 10% severely wasted.'
         );
     }
 }

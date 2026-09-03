@@ -14,7 +14,7 @@
   .status-pill { border-radius: 999px; padding: .28rem .65rem; font-size: .74rem; font-weight: 800; }
   .status-healthy { background: #e7f3ed; color: #057243; }
   .status-alert { background: #ffeceb; color: #d92d20; }
-  .profile-facts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; padding-top: 1.25rem; }
+  .profile-facts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1rem; padding-top: 1.25rem; }
   .fact-label { display: flex; align-items: center; gap: .4rem; color: #7c8bad; font-size: .78rem; }
   .fact-value { color: #082858; font-weight: 800; font-size: .88rem; margin-top: .45rem; }
   .metric-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.2rem; }
@@ -75,7 +75,7 @@
 </style>
 
 @php
-  $initials = collect(explode(' ', trim($student->name)))->filter()->map(fn($p) => strtoupper(substr($p, 0, 1)))->take(2)->implode('');
+  $initials = $student->initials;
   $flag = \App\Support\ChildBmiClassifier::classifyForStudent($student, $latest);
   $isRisk = \App\Support\ChildBmiClassifier::isUndernourished($flag);
   $isNormalStatus = $flag === \App\Support\ChildBmiClassifier::NORMAL;
@@ -86,7 +86,7 @@
   <a href="{{ route('students.index') }}" class="back-square"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></a>
   <div>
     <h1 class="profile-title">Student Profile</h1>
-    <div class="profile-crumb">Children / {{ $student->name }}</div>
+    <div class="profile-crumb">Children / {{ $student->display_name }}</div>
   </div>
 </div>
 
@@ -96,7 +96,7 @@
       <div class="profile-avatar">{{ $initials }}</div>
       <div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
-          <div class="profile-name">{{ $student->name }}</div>
+          <div class="profile-name">{{ $student->display_name }}</div>
           <span class="status-pill {{ $isNormalStatus ? 'status-healthy' : 'status-alert' }}">{{ $flag }}</span>
           @if($allergies->count())
             <span class="status-pill status-alert">Allergy Alert</span>
@@ -119,12 +119,16 @@
 
   <div class="profile-facts">
     <div>
+      <div class="fact-label">Learner ID</div>
+      <div class="fact-value">{{ $student->learner_uid }}</div>
+    </div>
+    <div>
       <div class="fact-label">Date of Birth</div>
       <div class="fact-value">{{ $student->birthdate?->format('F j, Y') ?? '-' }}</div>
     </div>
     <div>
-      <div class="fact-label">LRN / Student ID</div>
-      <div class="fact-value">{{ $student->lrn ?: '-' }}</div>
+      <div class="fact-label">LRN</div>
+      <div class="fact-value">{{ $student->lrn ?: 'Not recorded' }}</div>
     </div>
     <div>
       <div class="fact-label">Age</div>
@@ -210,11 +214,20 @@
         </div>
         <form method="POST" action="{{ route('students.measurements.store', $student) }}" class="row g-2">
           @csrf
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label small mb-1">Measurement Date</label>
             <input type="date" name="measured_at" value="{{ old('measured_at', now()->format('Y-m-d')) }}" class="form-control form-control-sm" required>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
+            <label class="form-label small mb-1">Assessment Phase</label>
+            <select name="assessment_phase" class="form-select form-select-sm" required>
+              @foreach(['Baseline', 'Midline', 'Endline', 'Additional Monitoring'] as $phase)
+                <option value="{{ $phase }}" @selected(old('assessment_phase', 'Additional Monitoring') === $phase)>{{ $phase }}</option>
+              @endforeach
+            </select>
+            @error('assessment_phase')<div class="text-danger small">{{ $message }}</div>@enderror
+          </div>
+          <div class="col-md-3">
             <label class="form-label small mb-1">Weight</label>
             <div class="unit-pair">
               <input type="number" step="0.01" min="0" name="weight_value" value="{{ old('weight_value', optional($latest)->weight_kg) }}" class="form-control form-control-sm" placeholder="Enter weight" required>
@@ -226,7 +239,7 @@
             </div>
             @error('weight_value')<div class="text-danger small">{{ $message }}</div>@enderror
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label small mb-1">Height</label>
             <div class="unit-pair">
               <input type="number" step="0.01" min="0" name="height_value" value="{{ old('height_value', optional($latest)->height_cm) }}" class="form-control form-control-sm" placeholder="Enter height" required>
@@ -278,7 +291,7 @@
           </div>
           <div class="table-responsive growth-table-scroll">
             <table class="table table-sm align-middle mb-0 growth-source-table">
-              <thead><tr><th>Date</th><th>Weight</th><th>Height</th><th>BMI</th><th>Status</th></tr></thead>
+              <thead><tr><th>Date</th><th>Phase</th><th>Weight</th><th>Height</th><th>BMI</th><th>Classification</th><th>Height-for-age</th></tr></thead>
               <tbody>
                 @foreach($growthTableRows as $row)
                   @php
@@ -287,10 +300,12 @@
                   @endphp
                   <tr data-growth-row data-date="{{ $growthDate }}" data-status="{{ $growthStatus }}" data-search="{{ strtolower($growthDate.' '.number_format($row->weight_kg, 2).' '.number_format($row->height_cm, 1).' '.$row->bmi.' '.$growthStatus) }}">
                     <td>{{ $growthDate }}</td>
+                    <td>{{ $row->assessment_phase ?: 'Additional Monitoring' }}</td>
                     <td>{{ number_format($row->weight_kg, 2) }} kg</td>
                     <td>{{ number_format($row->height_cm, 1) }} cm</td>
                     <td>{{ $row->bmi ?? '-' }}</td>
                     <td>{{ $growthStatus }}</td>
+                    <td>{{ $row->height_for_age_status ?: 'Not recorded' }}</td>
                   </tr>
                 @endforeach
               </tbody>
@@ -305,6 +320,21 @@
   </div>
 
   <div class="col-xl-4">
+    @if($latestEnrollment)
+      <div class="nl-card side-card mb-3">
+        <div class="panel-title mb-2">Feeding Program</div>
+        <div class="small text-muted">{{ $latestEnrollment->program_name }}</div>
+        <div class="d-grid gap-2 mt-3 small">
+          <div><span class="text-muted">School year:</span> <strong>{{ $latestEnrollment->school_year }}</strong></div>
+          <div><span class="text-muted">Milk consent:</span> <strong>{{ $latestEnrollment->milk_consent }}</strong></div>
+          <div><span class="text-muted">Previous beneficiary:</span> <strong>{{ $latestEnrollment->previous_sbfp_beneficiary }}</strong></div>
+          @if(auth()->user()?->isSchoolAdmin())
+            <div><span class="text-muted">4Ps status:</span> <strong>{{ $latestEnrollment->four_ps_status }}</strong></div>
+          @endif
+        </div>
+      </div>
+    @endif
+
     <div class="nl-card side-card mb-3">
       <div class="d-flex align-items-center gap-2 mb-3">
         <div class="metric-icon-large" style="width: 30px; height: 30px;"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18"/><path d="M10 3v6a4 4 0 0 1-8 0V3"/><path d="M18 3v18"/></svg></div>
@@ -333,7 +363,7 @@
         @forelse($allergies as $allergy)
           <div class="allergy-row"><span class="tiny-dot"></span>{{ $allergy }}</div>
         @empty
-          <div class="text-muted">No allergies recorded.</div>
+          <div class="text-muted">Not recorded</div>
         @endforelse
       </div>
       @if(auth()->user()?->isSchoolAdmin())

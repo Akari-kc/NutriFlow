@@ -406,7 +406,7 @@ class FeedingScheduleController extends Controller
                 return $selectedFoods
                     ->filter(fn ($food) => $this->foodMatchesAnyAllergy($food, $allergies))
                     ->map(fn ($food) => [
-                        'student' => $student->name,
+                        'student' => $student->display_name,
                         'allergies' => $allergies->implode(', '),
                         'food' => $food->name,
                     ]);

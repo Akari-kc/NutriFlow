@@ -34,7 +34,9 @@ class StudentController extends Controller
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('learner_uid', 'like', "%{$search}%")
                     ->orWhere('lrn', 'like', "%{$search}%")
+                    ->orWhere('source_learner_reference', 'like', "%{$search}%")
                     ->orWhere('class_name', 'like', "%{$search}%")
                     ->orWhere('section', 'like', "%{$search}%");
             });
@@ -48,13 +50,14 @@ class StudentController extends Controller
         $gradeStudents = (clone $query)
             ->orderBy('section')
             ->orderBy('name')
+            ->orderBy('learner_uid')
             ->get()
             ->filter(fn ($student) => $this->matchesRisk($student, $risk))
             ->sortBy([
                 fn($a, $b) => $this->gradeSortValue($a->class_name) <=> $this->gradeSortValue($b->class_name),
                 fn($a, $b) => strcmp((string) $a->class_name, (string) $b->class_name),
                 fn($a, $b) => strcmp((string) $a->section, (string) $b->section),
-                fn($a, $b) => strcmp((string) $a->name, (string) $b->name),
+                fn($a, $b) => strcmp((string) $a->display_name, (string) $b->display_name),
             ])
             ->values();
 
@@ -64,6 +67,7 @@ class StudentController extends Controller
             ->map(fn($studentsInGrade) => $studentsInGrade->groupBy(fn($student) => $student->section ?: 'No Section'));
 
         $filteredStudents = $query->orderBy('name', $dir)
+            ->orderBy('learner_uid', $dir)
             ->get()
             ->filter(fn ($student) => $this->matchesRisk($student, $risk))
             ->values();
@@ -82,8 +86,16 @@ class StudentController extends Controller
         $gradeSections = $this->availableGradeSections($schoolId);
         $searchSuggestions = Student::when($schoolId, fn($q) => $q->where('school_id', $schoolId))
             ->orderBy('name')
-            ->get(['name', 'lrn', 'class_name', 'section'])
-            ->flatMap(fn($student) => [$student->name, $student->lrn, $student->class_name, $student->section])
+            ->orderBy('learner_uid')
+            ->get(['learner_uid', 'name', 'lrn', 'source_learner_reference', 'class_name', 'section'])
+            ->flatMap(fn($student) => [
+                $student->learner_uid,
+                $student->name,
+                $student->lrn,
+                $student->source_learner_reference,
+                $student->class_name,
+                $student->section,
+            ])
             ->filter()
             ->unique()
             ->values();
@@ -124,9 +136,9 @@ class StudentController extends Controller
         $allergyOptions = $this->allergyOptions();
 
         $data = $request->validate([
-            'first_name' => 'required|string|max:100',
+            'first_name' => 'nullable|string|max:100',
             'middle_initial' => 'nullable|string|max:5',
-            'last_name' => 'required|string|max:100',
+            'last_name' => 'nullable|string|max:100',
             'suffix' => 'nullable|string|max:20',
             'lrn' => 'nullable|string|max:50',
             'gender' => 'required|in:Male,Female',
@@ -147,9 +159,9 @@ class StudentController extends Controller
         $weightKg = $this->normalizeWeightKg((float) $data['weight_value'], $data['weight_unit']);
         $heightCm = $this->normalizeHeightCm((float) $data['height_value'], $data['height_unit']);
 
-        if (! $this->birthdateMatchesElementaryAge($data['birthdate'])) {
+        if (! $this->birthdateMatchesSupportedLearnerAge($data['birthdate'])) {
             return back()
-                ->withErrors(['birthdate' => 'Age must fit Kinder to Grade 6 learners, usually 5 to 12 years old.'])
+                ->withErrors(['birthdate' => 'Age must be between 4 and 18 years old for this learner record.'])
                 ->withInput();
         }
 
@@ -172,9 +184,9 @@ class StudentController extends Controller
 
         $student = Student::create([
             'name' => $this->composeStudentName(
-                $data['first_name'],
+                $data['first_name'] ?? null,
                 $data['middle_initial'] ?? null,
-                $data['last_name'],
+                $data['last_name'] ?? null,
                 $data['suffix'] ?? null
             ),
             'lrn' => $data['lrn'] ?? null,
@@ -184,14 +196,17 @@ class StudentController extends Controller
             'class_name' => $data['class_name'],
             'allergies' => $allergies ?: null,
             'school_id' => $schoolId,
+            'data_origin' => 'Manual',
         ]);
 
         $heightM = $heightCm > 0 ? ($heightCm / 100) : null;
         $bmi = $heightM ? round($weightKg / ($heightM * $heightM), 2) : null;
         $measuredAt = Carbon::today();
-        $bmiFlag = $bmi !== null
-            ? ChildBmiClassifier::classify($bmi, $student->gender, $student->birthdate, $measuredAt)
-            : ChildBmiClassifier::NO_MEASUREMENT;
+        $bmiFlag = match (true) {
+            $bmi === null => ChildBmiClassifier::NO_MEASUREMENT,
+            ! $student->gender || ! $student->birthdate => ChildBmiClassifier::NEEDS_REVIEW,
+            default => ChildBmiClassifier::classify($bmi, $student->gender, $student->birthdate, $measuredAt),
+        };
 
         $student->measurements()->create([
             'measured_at' => $measuredAt->format('Y-m-d'),
@@ -199,9 +214,13 @@ class StudentController extends Controller
             'height_cm' => $heightCm,
             'bmi' => $bmi,
             'bmi_flag' => $bmiFlag,
+            'assessment_phase' => 'Baseline',
+            'source_nutrition_status' => null,
+            'assessment_method' => 'NutriFlow BMI-for-age prototype',
+            'data_origin' => 'Manual',
         ]);
 
-        return redirect()->route('students.index')->with('status','Student added');
+        return redirect()->route('students.index')->with('status','Learner added');
     }
 
     public function show(Student $student)
@@ -219,6 +238,9 @@ class StudentController extends Controller
         $latestMeal = Meal::with('items.food')
             ->where('student_id', $student->id)
             ->latest('served_at')
+            ->first();
+        $latestEnrollment = $student->feedingProgramEnrollments()
+            ->orderByDesc('school_year')
             ->first();
 
         $mealType = request('meal_type', 'All');
@@ -298,6 +320,7 @@ class StudentController extends Controller
             'measurements' => $measurements,
             'latest' => $latest,
             'latestMeal' => $latestMeal,
+            'latestEnrollment' => $latestEnrollment,
             'mealHistory' => $mealHistory,
             'mealFilters' => [
                 'meal_type' => $mealType,
@@ -347,9 +370,9 @@ class StudentController extends Controller
         $classes = $this->availableClasses($schoolId);
         $sections = $this->availableSections($schoolId);
         $data = $request->validate([
-            'first_name' => 'required|string|max:100',
+            'first_name' => 'nullable|string|max:100',
             'middle_initial' => 'nullable|string|max:5',
-            'last_name' => 'required|string|max:100',
+            'last_name' => 'nullable|string|max:100',
             'suffix' => 'nullable|string|max:20',
             'lrn' => 'nullable|string|max:50',
             'gender' => 'nullable|in:Male,Female',
@@ -370,9 +393,9 @@ class StudentController extends Controller
                 ->withInput();
         }
 
-        if (!empty($data['birthdate']) && ! $this->birthdateMatchesElementaryAge($data['birthdate'])) {
+        if (!empty($data['birthdate']) && ! $this->birthdateMatchesSupportedLearnerAge($data['birthdate'])) {
             return back()
-                ->withErrors(['birthdate' => 'Age must fit Kinder to Grade 6 learners, usually 5 to 12 years old.'])
+                ->withErrors(['birthdate' => 'Age must be between 4 and 18 years old for this learner record.'])
                 ->withInput();
         }
 
@@ -384,9 +407,9 @@ class StudentController extends Controller
 
         $student->update([
             'name' => $this->composeStudentName(
-                $data['first_name'],
+                $data['first_name'] ?? null,
                 $data['middle_initial'] ?? null,
-                $data['last_name'],
+                $data['last_name'] ?? null,
                 $data['suffix'] ?? null
             ),
             'lrn' => $data['lrn'] ?? null,
@@ -397,7 +420,7 @@ class StudentController extends Controller
             'allergies' => $allergies ?: null,
         ]);
 
-        return redirect()->route('students.show', $student)->with('status','Student updated');
+        return redirect()->route('students.show', $student)->with('status','Learner updated');
     }
 
     public function storeSection(Request $request)
@@ -438,6 +461,7 @@ class StudentController extends Controller
             'weight_unit' => 'required|in:kg,g,lb',
             'height_value' => 'required|numeric|min:0',
             'height_unit' => 'required|in:cm,m,in,ft',
+            'assessment_phase' => 'nullable|in:Baseline,Midline,Endline,Additional Monitoring',
         ]);
 
         $weightKg = $this->normalizeWeightKg((float) $data['weight_value'], $data['weight_unit']);
@@ -452,9 +476,11 @@ class StudentController extends Controller
         $heightM = $heightCm > 0 ? ($heightCm / 100) : null;
         $bmi = $heightM ? round($weightKg / ($heightM * $heightM), 2) : null;
         $measuredAt = Carbon::parse($data['measured_at']);
-        $bmiFlag = $bmi !== null
-            ? ChildBmiClassifier::classify($bmi, $student->gender, $student->birthdate, $measuredAt)
-            : ChildBmiClassifier::NO_MEASUREMENT;
+        $bmiFlag = match (true) {
+            $bmi === null => ChildBmiClassifier::NO_MEASUREMENT,
+            ! $student->gender || ! $student->birthdate => ChildBmiClassifier::NEEDS_REVIEW,
+            default => ChildBmiClassifier::classify($bmi, $student->gender, $student->birthdate, $measuredAt),
+        };
 
         $student->measurements()->create([
             'measured_at' => $measuredAt->format('Y-m-d'),
@@ -462,6 +488,10 @@ class StudentController extends Controller
             'height_cm' => $heightCm,
             'bmi' => $bmi,
             'bmi_flag' => $bmiFlag,
+            'assessment_phase' => $data['assessment_phase'] ?? 'Additional Monitoring',
+            'source_nutrition_status' => null,
+            'assessment_method' => 'NutriFlow BMI-for-age prototype',
+            'data_origin' => 'Manual',
         ]);
 
     return redirect()->back()->with('status', 'Measurement saved');
@@ -486,11 +516,11 @@ class StudentController extends Controller
         }, 1);
     }
 
-    private function birthdateMatchesElementaryAge(string $birthdate): bool
+    private function birthdateMatchesSupportedLearnerAge(string $birthdate): bool
     {
         $age = Carbon::parse($birthdate)->age;
 
-        return $age >= 5 && $age <= 12;
+        return $age >= 4 && $age <= 18;
     }
 
     private function matchesRisk(Student $student, string $risk): bool
@@ -736,9 +766,9 @@ class StudentController extends Controller
             ->values();
     }
 
-    private function splitStudentName(string $name): array
+    private function splitStudentName(?string $name): array
     {
-        $parts = preg_split('/\s+/', trim($name)) ?: [];
+        $parts = preg_split('/\s+/', trim((string) $name)) ?: [];
         $suffixes = ['Jr.', 'Sr.', 'II', 'III', 'IV', 'V'];
         $suffix = '';
 
@@ -769,18 +799,20 @@ class StudentController extends Controller
         ];
     }
 
-    private function composeStudentName(string $first, ?string $middleInitial, string $last, ?string $suffix): string
+    private function composeStudentName(?string $first, ?string $middleInitial, ?string $last, ?string $suffix): ?string
     {
         $middle = trim((string) $middleInitial);
         if ($middle !== '' && !str_ends_with($middle, '.')) {
             $middle .= '.';
         }
 
-        return collect([
-            trim($first),
+        $name = collect([
+            trim((string) $first),
             $middle,
-            trim($last),
+            trim((string) $last),
             trim((string) $suffix),
         ])->filter()->implode(' ');
+
+        return $name !== '' ? $name : null;
     }
 }

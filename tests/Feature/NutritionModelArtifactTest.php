@@ -7,6 +7,11 @@ use Tests\TestCase;
 
 class NutritionModelArtifactTest extends TestCase
 {
+    public function test_runtime_timeout_allows_for_cold_windows_model_startup(): void
+    {
+        $this->assertGreaterThanOrEqual(30, (float) config('nutriflow_ml.timeout_seconds'));
+    }
+
     public function test_versioned_model_artifact_matches_its_metadata_hash(): void
     {
         $metadata = json_decode((string) file_get_contents(base_path('ml/models/model_metadata.json')), true);

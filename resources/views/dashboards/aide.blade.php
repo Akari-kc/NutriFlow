@@ -109,7 +109,7 @@
           <span class="risk-dot bg-danger"></span>
           <span class="flex-grow-1">
             <span class="risk-number">{{ $kpis['severe_count'] ?? 0 }}</span>
-            <span class="risk-label d-block fw-bold small mt-1">Severely Undernourished</span>
+            <span class="risk-label d-block fw-bold small mt-1">Severely Wasted</span>
             <span class="d-block small text-muted">Immediate attention needed</span>
           </span>
           <span class="dash-arrow"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
@@ -118,7 +118,7 @@
           <span class="risk-dot bg-warning"></span>
           <span class="flex-grow-1">
             <span class="risk-number">{{ $kpis['moderate_count'] ?? 0 }}</span>
-            <span class="risk-label d-block fw-bold small mt-1">Undernourished</span>
+            <span class="risk-label d-block fw-bold small mt-1">Wasted</span>
             <span class="d-block small text-muted">Requires monitoring</span>
           </span>
           <span class="dash-arrow"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>

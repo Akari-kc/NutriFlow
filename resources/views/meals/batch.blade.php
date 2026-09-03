@@ -163,7 +163,7 @@
             @foreach($students as $s)
               <tr>
                 <td><input type="checkbox" class="student-check" name="served_students[]" value="{{ $s->id }}" /></td>
-                <td>{{ $s->name }}</td>
+                <td>{{ $s->display_name }} <span class="text-muted small d-block">{{ $s->learner_uid }}</span></td>
                 <td>{{ $s->gender }}</td>
                 <td>{{ $s->section }}</td>
                 <td>{{ $s->class_name }}</td>

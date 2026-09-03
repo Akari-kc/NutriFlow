@@ -125,6 +125,10 @@ class BackfillSyntheticGrowthHistorySeeder extends Seeder
                         'height_cm' => $height,
                         'bmi' => $values['bmi'],
                         'bmi_flag' => $values['bmi_flag'],
+                        'assessment_phase' => 'Additional Monitoring',
+                        'source_nutrition_status' => $values['bmi_flag'],
+                        'assessment_method' => 'NutriFlow BMI-for-age prototype',
+                        'data_origin' => 'Synthetic',
                     ]);
 
                     $existingDates[$dateString] = true;

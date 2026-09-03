@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Food;
+use App\Models\FeedingProgramEnrollment;
 use App\Models\GradeSection;
 use App\Models\GrowthMeasurement;
 use App\Models\Meal;
@@ -47,7 +48,26 @@ class FilipinoElementaryRosterSeeder extends Seeder
         DB::transaction(function () use ($school, $gradeSections, $firstNames, $lastNames, $allergyPool) {
             $this->ensureGradeSectionsTable();
 
+            $scheduleParticipantUids = collect();
+            if (Schema::hasTable('feeding_schedules')) {
+                $oldUidById = Student::where('school_id', $school->id)
+                    ->pluck('learner_uid', 'id');
+                $scheduleParticipantUids = DB::table('feeding_schedules')
+                    ->where('school_id', $school->id)
+                    ->get(['id', 'participant_student_ids'])
+                    ->mapWithKeys(function ($schedule) use ($oldUidById) {
+                        $studentIds = json_decode((string) $schedule->participant_student_ids, true) ?: [];
+                        $uids = collect($studentIds)
+                            ->map(fn ($studentId) => $oldUidById->get((int) $studentId))
+                            ->filter()
+                            ->values();
+
+                        return [(int) $schedule->id => $uids];
+                    });
+            }
+
             Student::where('school_id', $school->id)->delete();
+            DB::table('learner_uid_sequences')->where('school_key', 'school-'.$school->id)->delete();
             GradeSection::where('school_id', $school->id)->delete();
 
             $studentNumber = 1;
@@ -62,7 +82,9 @@ class FilipinoElementaryRosterSeeder extends Seeder
 
                     for ($i = 0; $i < 10; $i++) {
                         $gender = $studentNumber % 2 === 0 ? 'Female' : 'Male';
-                        $name = $this->uniqueStudentName($gender, $nameCounters[$gender], $firstNames, $lastNames);
+                        $name = $studentNumber % 5 === 0
+                            ? null
+                            : $this->uniqueStudentName($gender, $nameCounters[$gender], $firstNames, $lastNames);
                         $nameCounters[$gender]++;
                         $age = $this->ageForGrade($grade);
                         $birthdate = Carbon::today('Asia/Manila')
@@ -71,6 +93,7 @@ class FilipinoElementaryRosterSeeder extends Seeder
                             ->toDateString();
 
                         $student = Student::create([
+                            'learner_uid' => 'LEARNER-'.str_pad((string) $studentNumber, 3, '0', STR_PAD_LEFT),
                             'name' => $name,
                             'gender' => $gender,
                             'birthdate' => $birthdate,
@@ -78,12 +101,49 @@ class FilipinoElementaryRosterSeeder extends Seeder
                             'class_name' => $grade,
                             'school_id' => $school->id,
                             'allergies' => $allergyPool[$studentNumber % count($allergyPool)],
+                            'data_origin' => 'Synthetic',
+                        ]);
+
+                        FeedingProgramEnrollment::create([
+                            'student_id' => $student->id,
+                            'school_year' => '2025-2026',
+                            'program_name' => 'School-Based Feeding Program',
+                            'milk_consent' => $studentNumber % 7 === 0 ? 'No' : 'Yes',
+                            'four_ps_status' => $studentNumber % 3 === 0 ? 'Yes' : 'No',
+                            'previous_sbfp_beneficiary' => $studentNumber % 4 === 0 ? 'Yes' : 'No',
+                            'data_origin' => 'Synthetic',
                         ]);
 
                         $this->seedGrowth($student, $grade, $studentNumber);
                         $studentNumber++;
                     }
                 }
+            }
+
+            DB::table('learner_uid_sequences')->updateOrInsert(
+                ['school_key' => 'school-'.$school->id],
+                [
+                    'next_number' => $studentNumber,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+
+            if ($scheduleParticipantUids->isNotEmpty()) {
+                $newIdByUid = Student::where('school_id', $school->id)
+                    ->pluck('id', 'learner_uid');
+                $scheduleParticipantUids->each(function ($uids, $scheduleId) use ($newIdByUid) {
+                    $studentIds = collect($uids)
+                        ->map(fn ($uid) => $newIdByUid->get($uid))
+                        ->filter()
+                        ->unique()
+                        ->values();
+                    DB::table('feeding_schedules')->where('id', $scheduleId)->update([
+                        'participant_student_ids' => $studentIds->toJson(),
+                        'student_count' => $studentIds->count(),
+                        'updated_at' => now(),
+                    ]);
+                });
             }
 
             $this->seedMeals($school);
@@ -138,7 +198,8 @@ class FilipinoElementaryRosterSeeder extends Seeder
             default => 6,
         };
         $baseHeight = 107 + ($gradeIndex * 6) + ($studentNumber % 5);
-        $days = [60, 45, 30, 15, 0];
+        $days = [240, 120, 60, 30, 0];
+        $phases = ['Baseline', 'Midline', 'Additional Monitoring', 'Additional Monitoring', 'Endline'];
         $targetStatus = SyntheticGrowthProfile::statusForOrdinal($studentNumber - 1);
 
         foreach ($days as $index => $daysAgo) {
@@ -159,6 +220,10 @@ class FilipinoElementaryRosterSeeder extends Seeder
                 'height_cm' => $height,
                 'bmi' => $values['bmi'],
                 'bmi_flag' => $values['bmi_flag'],
+                'assessment_phase' => $phases[$index],
+                'source_nutrition_status' => $values['bmi_flag'],
+                'assessment_method' => 'NutriFlow BMI-for-age prototype',
+                'data_origin' => 'Synthetic',
             ]);
         }
     }

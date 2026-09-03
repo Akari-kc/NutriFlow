@@ -3,13 +3,13 @@
 @section('content')
 @php
   $normal = $statusCounts['Normal'] ?? 0;
-  $undernourished = $statusCounts['Undernourished'] ?? 0;
-  $severe = $statusCounts['Severely Undernourished'] ?? 0;
+  $undernourished = $statusCounts['Wasted'] ?? 0;
+  $severe = $statusCounts['Severely Wasted'] ?? 0;
   $noMeasurement = $statusCounts['No Measurement'] ?? 0;
   $statusMeta = [
       ['Normal', '#16a34a'],
-      ['Undernourished', '#d97706'],
-      ['Severely Undernourished', '#dc2626'],
+      ['Wasted', '#d97706'],
+      ['Severely Wasted', '#dc2626'],
       ['Overweight', '#2563eb'],
       ['Obese', '#7c3aed'],
       ['Needs Review', '#0f766e'],
@@ -186,8 +186,8 @@
         <select name="status" class="filter-control wide">
           <option value="All" @selected($selectedStatus === 'All')>All</option>
           <option value="Normal" @selected($selectedStatus === 'Normal')>Normal</option>
-          <option value="Undernourished" @selected($selectedStatus === 'Undernourished')>Undernourished</option>
-          <option value="Severely Undernourished" @selected($selectedStatus === 'Severely Undernourished')>Severely Undernourished</option>
+          <option value="Wasted" @selected($selectedStatus === 'Wasted')>Wasted</option>
+          <option value="Severely Wasted" @selected($selectedStatus === 'Severely Wasted')>Severely Wasted</option>
           <option value="Overweight" @selected($selectedStatus === 'Overweight')>Overweight</option>
           <option value="Obese" @selected($selectedStatus === 'Obese')>Obese</option>
           <option value="Needs Review" @selected($selectedStatus === 'Needs Review')>Needs Review</option>
@@ -217,13 +217,13 @@
     </div>
     <div class="nl-card report-metric">
       <span class="metric-dot" style="background:#d97706"></span>
-      <div class="metric-title">Undernourished</div>
+      <div class="metric-title">Wasted</div>
       <div class="metric-value metric-orange">{{ number_format($undernourished) }}</div>
       <div class="metric-note">{{ $percent($undernourished) }}% of students</div>
     </div>
     <div class="nl-card report-metric">
       <span class="metric-dot" style="background:#dc2626"></span>
-      <div class="metric-title">Severely Undernourished</div>
+      <div class="metric-title">Severely Wasted</div>
       <div class="metric-value metric-red">{{ number_format($severe) }}</div>
       <div class="metric-note">{{ $percent($severe) }}% of students</div>
     </div>
@@ -330,8 +330,8 @@
             @php
               $statusClass = match($row['status']) {
                 'Normal' => 'normal',
-                'Undernourished' => 'undernourished',
-                'Severely Undernourished' => 'severe',
+                'Wasted' => 'undernourished',
+                'Severely Wasted' => 'severe',
                 default => 'missing',
               };
             @endphp
@@ -339,7 +339,8 @@
               <td>
                 <div class="report-name">
                   <span class="file-icon"><svg class="svg-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-                  {{ $row['student']->name }}
+                  {{ $row['student']->display_name }}
+                  <span class="text-muted small d-block">{{ $row['student']->learner_uid }}</span>
                 </div>
               </td>
               <td>{{ $row['student']->class_name ?? 'Unassigned' }} / {{ $row['student']->section ?? 'No section' }}</td>

@@ -10,7 +10,20 @@ class GrowthMeasurement extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['student_id','measured_at','weight_kg','height_cm','bmi','bmi_flag'];
+    protected $fillable = [
+        'student_id',
+        'measured_at',
+        'assessment_phase',
+        'weight_kg',
+        'height_cm',
+        'bmi',
+        'bmi_flag',
+        'source_nutrition_status',
+        'height_for_age_status',
+        'assessment_method',
+        'data_origin',
+        'source_record_reference',
+    ];
 
     protected $casts = [
         'measured_at' => 'date',

@@ -1,7 +1,7 @@
 @php
   $normal = $statusCounts['Normal'] ?? 0;
-  $undernourished = $statusCounts['Undernourished'] ?? 0;
-  $severe = $statusCounts['Severely Undernourished'] ?? 0;
+  $undernourished = $statusCounts['Wasted'] ?? 0;
+  $severe = $statusCounts['Severely Wasted'] ?? 0;
   $noMeasurement = $statusCounts['No Measurement'] ?? 0;
   $percent = fn($value) => $totalStudents > 0 ? round(($value / $totalStudents) * 100, 1) : 0;
 @endphp
@@ -51,8 +51,8 @@
   <div class="summary">
     <div class="metric"><div class="label">Total Students</div><div class="value">{{ number_format($totalStudents) }}</div></div>
     <div class="metric"><div class="label">Normal</div><div class="value">{{ number_format($normal) }}</div><div class="muted">{{ $percent($normal) }}%</div></div>
-    <div class="metric"><div class="label">Undernourished</div><div class="value">{{ number_format($undernourished) }}</div><div class="muted">{{ $percent($undernourished) }}%</div></div>
-    <div class="metric"><div class="label">Severely Undernourished</div><div class="value">{{ number_format($severe) }}</div><div class="muted">{{ $percent($severe) }}%</div></div>
+    <div class="metric"><div class="label">Wasted</div><div class="value">{{ number_format($undernourished) }}</div><div class="muted">{{ $percent($undernourished) }}%</div></div>
+    <div class="metric"><div class="label">Severely Wasted</div><div class="value">{{ number_format($severe) }}</div><div class="muted">{{ $percent($severe) }}%</div></div>
     <div class="metric"><div class="label">No Measurement</div><div class="value">{{ number_format($noMeasurement) }}</div><div class="muted">{{ $percent($noMeasurement) }}%</div></div>
     <div class="metric"><div class="label">Screened This Period</div><div class="value">{{ number_format($screenedStudents) }}</div><div class="muted">{{ $percent($screenedStudents) }}%</div></div>
     <div class="metric"><div class="label">Meals Served</div><div class="value">{{ number_format($mealTotals['meals_served']) }}</div></div>
@@ -73,7 +73,7 @@
     <tbody>
       @forelse($reportRows as $row)
         <tr>
-          <td>{{ $row['student']->name }}</td>
+          <td>{{ $row['student']->display_name }}<br><span class="muted">{{ $row['student']->learner_uid }}</span></td>
           <td>{{ $row['student']->class_name ?? 'Unassigned' }} / {{ $row['student']->section ?? 'No section' }}</td>
           <td>{{ $row['status'] }}</td>
           <td>{{ $row['measured_at'] ?? 'Not screened' }}</td>

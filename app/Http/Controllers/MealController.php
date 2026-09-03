@@ -103,7 +103,11 @@ class MealController extends Controller
             $studentsQ->where('section', $section);
         }
         if ($search !== '') {
-            $studentsQ->where('name', 'like', "%{$search}%");
+            $studentsQ->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('learner_uid', 'like', "%{$search}%")
+                    ->orWhere('lrn', 'like', "%{$search}%");
+            });
         }
 
         // Distinct lists for filters (scoped)
@@ -114,14 +118,16 @@ class MealController extends Controller
         $gradeSections = $this->gradeSections($user?->school_id);
         $studentSuggestions = Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
             ->orderBy('name')
-            ->pluck('name')
+            ->get(['learner_uid', 'name'])
+            ->flatMap(fn (Student $student) => [$student->display_name, $student->learner_uid])
+            ->filter()
             ->unique()
             ->values();
         $studentAssessmentData = Student::when($user && $user->school_id, fn ($q) => $q->where('school_id', $user->school_id))
             ->orderBy('name')
-            ->get(['id', 'name', 'allergies'])
+            ->get(['id', 'learner_uid', 'name', 'source_learner_reference', 'allergies'])
             ->mapWithKeys(fn (Student $student) => [(string) $student->id => [
-                'name' => $student->name,
+                'name' => $student->display_name,
                 'allergies' => $student->allergies,
             ]]);
         $schedules = FeedingSchedule::query()

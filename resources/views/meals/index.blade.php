@@ -117,7 +117,7 @@
                 <span class="meal-meta">{{ $m->served_at?->format('h:i A') }}</span>
               </td>
               <td>
-                <span class="meal-student">{{ $m->student?->name }}</span>
+                <span class="meal-student">{{ $m->student?->display_name }}</span>
               </td>
               <td>{{ $m->student?->class_name }}</td>
               <td>{{ $m->student?->section }}</td>

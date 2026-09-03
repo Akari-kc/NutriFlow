@@ -62,7 +62,6 @@
   $riskOptions = ['All' => 'All Risk Levels', 'Low' => 'Low Risk', 'Moderate' => 'Moderate Risk', 'Severe' => 'Severe Risk'];
   $activeMode = $mode ?? 'all';
   $baseParams = request()->except(['mode', 'page']);
-  $initials = fn($name) => collect(explode(' ', trim($name)))->filter()->map(fn($p) => strtoupper(substr($p, 0, 1)))->take(2)->implode('');
   $riskInfo = function ($student) {
       $status = \App\Support\ChildBmiClassifier::classifyForStudent($student, $student->latestMeasurement);
       if ($status === \App\Support\ChildBmiClassifier::SEVERELY_UNDERNOURISHED) {
@@ -154,10 +153,10 @@
                     [$riskLabel, $riskClass] = $riskInfo($s);
                   @endphp
                   <a href="{{ route('students.show', $s) }}" class="section-student">
-                    <span class="student-avatar">{{ $initials($s->name) }}</span>
+                    <span class="student-avatar">{{ $s->initials }}</span>
                     <span class="flex-grow-1">
-                      <span class="fw-bold">{{ $s->name }}</span>
-                      <span class="student-meta d-block">@if($s->lrn) ID {{ $s->lrn }} &middot; @endif{{ $s->gender ?? '-' }} &middot; {{ $s->birthdate?->format('Y-m-d') ?? '-' }}</span>
+                      <span class="fw-bold">{{ $s->display_name }}</span>
+                      <span class="student-meta d-block">{{ $s->learner_uid }} @if($s->lrn)&middot; LRN {{ $s->lrn }} @endif &middot; {{ $s->gender ?? '-' }} &middot; {{ $s->birthdate?->format('Y-m-d') ?? '-' }}</span>
                     </span>
                     <span class="risk-pill {{ $riskClass }}">{{ $riskLabel }}</span>
                     <span class="view-pill">View</span>
@@ -182,7 +181,7 @@
           <thead>
             <tr>
               <th>Student</th>
-              <th>LRN / ID</th>
+              <th>Learner ID</th>
               <th>Section</th>
               <th>Class</th>
               <th>Risk</th>
@@ -197,11 +196,11 @@
               <tr>
                 <td>
                   <div class="student-cell">
-                    <span class="student-avatar">{{ $initials($s->name) }}</span>
-                    <span>{{ $s->name }}</span>
+                    <span class="student-avatar">{{ $s->initials }}</span>
+                    <span>{{ $s->display_name }}</span>
                   </div>
                 </td>
-                <td>{{ $s->lrn ?: '-' }}</td>
+                <td><span class="fw-semibold">{{ $s->learner_uid }}</span>@if($s->lrn)<span class="student-meta d-block">LRN {{ $s->lrn }}</span>@endif</td>
                 <td>{{ $s->section }}</td>
                 <td>{{ $s->class_name }}</td>
                 <td><span class="risk-pill {{ $riskClass }}">{{ $riskLabel }}</span></td>

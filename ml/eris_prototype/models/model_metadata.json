@@ -1,0 +1,63 @@
+{
+  "model_version": "eris-long-horizon-experimental-v0",
+  "selected_model": "Decision Tree",
+  "selection_rule": "Highest mean ROC-AUC in one fixed 5-fold stratified cross-validation; mean F1 tie-breaker.",
+  "target": "ERIS post-intervention Undernourished or Severely Undernourished approximately 248 days after baseline.",
+  "positive_label": "Future Undernourished or Severely Undernourished",
+  "negative_label": "Future Normal",
+  "feature_columns": [
+    "age_months_at_anchor",
+    "current_weight_kg",
+    "current_height_cm",
+    "current_bmi",
+    "sex_recorded",
+    "current_bmi_flag",
+    "current_hfa_flag"
+  ],
+  "numeric_features": [
+    "age_months_at_anchor",
+    "current_weight_kg",
+    "current_height_cm",
+    "current_bmi"
+  ],
+  "categorical_features": [
+    "sex_recorded",
+    "current_bmi_flag",
+    "current_hfa_flag"
+  ],
+  "risk_threshold": 0.5,
+  "training_rows": 48,
+  "positive_rows": 5,
+  "negative_rows": 43,
+  "observed_followup_days": [
+    248
+  ],
+  "observed_age_months_min": 59,
+  "observed_age_months_max": 171,
+  "artifact_file": "eris_long_horizon_experimental_v0.joblib",
+  "artifact_sha256": "df976aeb8cf84f3f4ca36f922f4dece8dd26340b72cee40902d594fa07766a64",
+  "source_staging_sha256": "d3c483584ac4bb6cd3be7dda3cf9f714715cce26557491f01c214acca75071fb",
+  "name_used_as_feature": false,
+  "allergies_used_as_feature": false,
+  "four_ps_used_as_feature": false,
+  "synthetic_data_only": false,
+  "single_school_single_cohort": true,
+  "clinical_validity": false,
+  "production_integration_approved": false,
+  "frontend_integration_enabled": false,
+  "replaces_prototype_v2": false,
+  "limitations": [
+    "Only 48 usable learners and 5 positive outcomes.",
+    "All outcomes come from one school and one intervention cycle.",
+    "The observed follow-up interval is approximately 248 days, not the existing prototype-v2 21-40 day horizon.",
+    "Cross-validation estimates have very high uncertainty and must not be presented as clinical accuracy.",
+    "Source classifications and assessment methods require confirmation before production use."
+  ],
+  "runtime": {
+    "python": "3.12.13",
+    "pandas": "3.0.5",
+    "scikit_learn": "1.9.0",
+    "joblib": "1.5.3"
+  },
+  "trained_at": "2026-08-31T05:34:48+08:00"
+}

@@ -50,7 +50,7 @@ class PythonNutritionRiskPredictor implements NutritionRiskPredictor
         }
 
         try {
-            $payload = json_encode($features, JSON_THROW_ON_ERROR);
+            $payload = json_encode($this->legacyModelFeatures($features), JSON_THROW_ON_ERROR);
             if (file_put_contents($inputPath, $payload, LOCK_EX) === false) {
                 throw new RuntimeException('The prototype assessment input could not be prepared.');
             }
@@ -132,7 +132,12 @@ class PythonNutritionRiskPredictor implements NutritionRiskPredictor
         }
 
         try {
-            $payload = json_encode(['batch' => array_values($featureRows)], JSON_THROW_ON_ERROR);
+            $payload = json_encode([
+                'batch' => array_values(array_map(
+                    fn (array $features) => $this->legacyModelFeatures($features),
+                    $featureRows
+                )),
+            ], JSON_THROW_ON_ERROR);
             if (file_put_contents($inputPath, $payload, LOCK_EX) === false) {
                 throw new RuntimeException('The prototype assessment input could not be prepared.');
             }
@@ -172,5 +177,20 @@ class PythonNutritionRiskPredictor implements NutritionRiskPredictor
         }
 
         return array_values($results);
+    }
+
+    /**
+     * Prototype-v2 was serialized with the former display vocabulary. Keep that
+     * translation isolated at the legacy artifact boundary.
+     */
+    private function legacyModelFeatures(array $features): array
+    {
+        $features['current_bmi_flag'] = match ($features['current_bmi_flag'] ?? null) {
+            'Wasted' => 'Undernourished',
+            'Severely Wasted' => 'Severely Undernourished',
+            default => $features['current_bmi_flag'] ?? null,
+        };
+
+        return $features;
     }
 }

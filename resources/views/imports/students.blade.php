@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('page-title', 'Student Import')
+@section('page-title', 'Learner Import')
 @section('content')
 <style>
   .import-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.1rem; }
@@ -32,8 +32,8 @@
 
 <div class="import-head">
   <div>
-    <h1 class="import-title">Student Batch Import</h1>
-    <div class="import-subtitle">Use this for a clean client setup. The CSV creates or updates children by LRN / Student ID, creates grade sections, and saves growth measurements when height and weight columns are present.</div>
+    <h1 class="import-title">Learner Batch Import</h1>
+    <div class="import-subtitle">The CSV creates or updates learners by permanent Learner ID, keeps names and LRN optional, and preserves source classification, assessment phase, and program details.</div>
   </div>
   <a href="{{ route('student-import.template') }}" class="btn btn-outline-primary nl-btn">Download CSV Template</a>
 </div>
@@ -47,8 +47,8 @@
     </div>
     <div class="result-stats">
       <span class="result-stat">{{ number_format($summary['rows'] ?? 0) }} rows read</span>
-      <span class="result-stat">{{ number_format($summary['created'] ?? 0) }} students created</span>
-      <span class="result-stat">{{ number_format($summary['updated'] ?? 0) }} students updated</span>
+      <span class="result-stat">{{ number_format($summary['created'] ?? 0) }} learners created</span>
+      <span class="result-stat">{{ number_format($summary['updated'] ?? 0) }} learners updated</span>
       <span class="result-stat">{{ number_format($summary['measurements'] ?? 0) }} growth records saved</span>
     </div>
     @if(!empty($result['errors']))
@@ -63,7 +63,7 @@
 
 <div class="import-grid">
   <div class="nl-card import-panel">
-    <div class="panel-title">Upload Student CSV</div>
+    <div class="panel-title">Upload Learner CSV</div>
     <div class="panel-subtitle">A batch succeeds only when every row passes validation, so the catalog does not end up half-imported.</div>
 
     <form method="POST" action="{{ route('student-import.import') }}" enctype="multipart/form-data" class="mt-3">
@@ -73,7 +73,7 @@
       @error('csv')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
       <div class="form-text">Maximum file size: 5 MB. Use the template if you are unsure about column names.</div>
       <div class="d-flex justify-content-end mt-3">
-        <button class="btn btn-primary nl-btn">Import Students</button>
+        <button class="btn btn-primary nl-btn">Import Learners</button>
       </div>
     </form>
 
@@ -94,10 +94,13 @@
       <table class="table table-sm template-table mb-0">
         <thead><tr><th>Column</th><th>Purpose</th></tr></thead>
         <tbody>
-          <tr><td>lrn</td><td>Unique student key. Existing matching students are updated.</td></tr>
+          <tr><td>learner_uid</td><td>Permanent matching key in the format LEARNER-001. Existing matching learners are updated.</td></tr>
+          <tr><td>name fields, lrn</td><td>Optional display and administrative information. These fields are not predictive inputs.</td></tr>
           <tr><td>grade, section</td><td>Creates the child grade/section assignment and adds the section if new.</td></tr>
-          <tr><td>allergies</td><td>Use comma-separated values, such as Milk, Peanuts.</td></tr>
-          <tr><td>measured_at, weight_kg, height_cm</td><td>Optional growth record. Repeat the same LRN on another row for another measurement date.</td></tr>
+          <tr><td>allergies</td><td>Blank means Not recorded. Use comma-separated values only when allergies are known.</td></tr>
+          <tr><td>measured_at, weight_kg, height_cm</td><td>Optional growth record. Repeat the same Learner ID for another assessment date.</td></tr>
+          <tr><td>source_nutrition_status</td><td>Uses report classifications: Severely Wasted, Wasted, Normal, Overweight, or Obese.</td></tr>
+          <tr><td>school_year and program fields</td><td>Optional feeding-program enrollment details; administrative fields are excluded from ML inputs.</td></tr>
         </tbody>
       </table>
     </div>
@@ -108,7 +111,7 @@
     <div class="panel-subtitle">For a dataless client install, start here before meal logs or schedules.</div>
     <div class="import-steps">
       <div class="import-step"><span class="step-number">1</span><span>Download the template and fill one row per child. Add repeated rows for extra growth records.</span></div>
-      <div class="import-step"><span class="step-number">2</span><span>Use LRN / Student ID consistently. It is the matching key for updates and measurements.</span></div>
+      <div class="import-step"><span class="step-number">2</span><span>Use the same permanent Learner ID consistently. Names may remain blank and can be added later.</span></div>
       <div class="import-step"><span class="step-number">3</span><span>Upload the completed CSV. If any row has errors, the system blocks the batch and shows what to fix.</span></div>
       <div class="import-step"><span class="step-number">4</span><span>After a successful import, review Children and Reports to confirm the roster and BMI records.</span></div>
     </div>

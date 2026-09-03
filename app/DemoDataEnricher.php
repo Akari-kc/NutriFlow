@@ -81,6 +81,10 @@ class DemoDataEnricher
 
         $used = [];
         foreach ($students->values() as $index => $student) {
+            if (! trim((string) $student->name)) {
+                continue;
+            }
+
             $parts = preg_split('/\s+/', trim((string) $student->name)) ?: [];
             $tail = collect(array_slice($parts, 1))->filter()->implode(' ') ?: 'Learner '.($index + 1);
             $name = trim($firstNames[$index % count($firstNames)].' '.$tail);
@@ -123,6 +127,10 @@ class DemoDataEnricher
                     'height_cm' => $heightCm,
                     'bmi' => $values['bmi'],
                     'bmi_flag' => $values['bmi_flag'],
+                    'assessment_phase' => 'Additional Monitoring',
+                    'source_nutrition_status' => $values['bmi_flag'],
+                    'assessment_method' => 'NutriFlow BMI-for-age prototype',
+                    'data_origin' => 'Synthetic',
                 ]);
             }
         }
@@ -162,6 +170,10 @@ class DemoDataEnricher
                     'height_cm' => $heightCm,
                     'bmi' => $values['bmi'],
                     'bmi_flag' => $values['bmi_flag'],
+                    'assessment_phase' => 'Additional Monitoring',
+                    'source_nutrition_status' => $values['bmi_flag'],
+                    'assessment_method' => 'NutriFlow BMI-for-age prototype',
+                    'data_origin' => 'Synthetic',
                 ]);
             }
         }
